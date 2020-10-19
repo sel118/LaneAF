@@ -6,9 +6,10 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
 
-
-class Tusimple(Dataset):
+class TuSimple(Dataset):
     """
     image_set is splitted into three partitions: train, val, test.
     train includes label_data_0313.json, label_data_0601.json
@@ -20,7 +21,7 @@ class Tusimple(Dataset):
     TEST_SET = ['test_label.json']
 
     def __init__(self, path, image_set, img_transforms=None):
-        super(Tusimple, self).__init__()
+        super(TuSimple, self).__init__()
         assert image_set in ('train', 'val', 'test'), "image_set is not valid!"
         self.data_dir_path = path
         self.image_set = image_set
