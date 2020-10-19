@@ -21,8 +21,8 @@ import sys
 import losses
 import utils
 #There were setup steps that Akshay showed us for this pose_dla_dcn in linux command line
-sys.path.append('/home/ksitu/ECE_285/DCNv2/build/lib.linux-x86_64-3.7')
-sys.path.append('/home/ksitu/ECE_285/DCNv2/')
+sys.path.append('./DCNv2/build/lib.linux-x86_64-3.7')
+sys.path.append('./DCNv2/')
 from DCNv2 import dcn_v2
 from dcn_v2 import DCN
 from pose_dla_dcn import get_pose_net
@@ -222,7 +222,7 @@ if __name__ == "__main__":
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
     del weights
-    trainLoader, valLoader, _ = Preprocessing()
+    trainLoader, valLoader, _ = dataset.Preprocessing()
     batch_size = 3
     train(batch_size, trainLoader, valLoader, criterion)
 
