@@ -9,10 +9,10 @@ This repository contains the Pytorch code for training and testing all PAFDLA la
 ```shell
 conda create -n PAFDLA pip python=3.6
 source activate PAFDLA
-pip install numpy scipy matplotlib pillow kmeans-pytorch
+pip install numpy scipy matplotlib pillow tqdm kmeans-pytorch
 conda install -c menpo opencv
-pip install https://download.pytorch.org/whl/cu100/torch-1.2.0-cp36-cp36m-manylinux1_x86_64.whl
-pip install https://download.pytorch.org/whl/cu100/torchvision-0.3.0-cp36-cp36m-linux_x86_64.whl
+pip install https://download.pytorch.org/whl/cu100/torch-1.3.1%2Bcu100-cp36-cp36m-linux_x86_64.whl
+pip install https://download.pytorch.org/whl/cu100/torchvision-0.4.2%2Bcu100-cp36-cp36m-linux_x86_64.whl
 source deactivate
 ```
 You can alternately find your desired PyTorch wheel from [here](https://download.pytorch.org/whl/torch_stable.html).
