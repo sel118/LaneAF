@@ -209,7 +209,7 @@ def Preprocessing():
     ])
 
     #directory of dataset
-    root_dir = './Data'
+    root_dir = './data'
     batch_size = 3
     #initializing dataset and dataloader objects
     trainSet = TuSimple(path=root_dir, image_set='train', 
