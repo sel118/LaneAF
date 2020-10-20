@@ -2,6 +2,7 @@ Pipfile
 Pipfile.lock
 experiments/
 data/
+DCNv2/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -54,6 +55,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
+.ipynb_checkpoints/
 
 .idea/
 .vscode/
