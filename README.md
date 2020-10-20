@@ -29,20 +29,15 @@ cd DCNv2
 The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/issues/3) should be downloaded and organized as follows:
 ```plain
 └── data
-    |── train_set
-    |   ├── clips
-    |   |   └── .
-    |   |   └── .
-    |   ├── label_data_0313.json
-    |   ├── label_data_0531.json
-    └── └── label_data_0601.json
-    |── test_set
-    |   ├── clips
-    |   |   └── .
-    |   |   └── .
-    |   ├── test_tasks_0627.json
-    |   ├── test_baseline.json
-    └── └── test_label.json
+    ├── clips
+    |   └── .
+    |   └── .
+    ├── label_data_0313.json
+    ├── label_data_0531.json
+    ├── label_data_0601.json
+    ├── test_tasks_0627.json
+    ├── test_baseline.json
+    └── test_label.json
 ```
 
 ## Training
