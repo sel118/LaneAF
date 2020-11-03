@@ -35,7 +35,7 @@ def train(batch_size, trainLoader, valLoader, criterion, check_num = 5):
     optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .003)
     counter = 0 
     #initializing containers to store accuracy and loss every epoch
-    losses = []
+    train_losses = []
     accuracies = []
     FP = []
     FN = []
@@ -107,7 +107,7 @@ def train(batch_size, trainLoader, valLoader, criterion, check_num = 5):
 
         print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
         Normalizing_Factor = len(trainLoader) * batch_size
-        losses.append(rolling_loss / Normalizing_Factor)
+        train_losses.append(rolling_loss / Normalizing_Factor)
         accuracies.append(rolling_acc / Normalizing_Factor)
         FP.append(rolling_FP / Normalizing_Factor)
         FN.append(rolling_FN / Normalizing_Factor)
@@ -137,7 +137,7 @@ def train(batch_size, trainLoader, valLoader, criterion, check_num = 5):
         if epoch == (num_epochs - 1):
             print("training is finished")
             #torch.save(model, 'parallel_model')
-            torch.save(losses, "parallel_model_final_decay=.003_train_loss")
+            torch.save(train_losses, "parallel_model_final_decay=.003_train_loss")
             torch.save(accuracies, "parallel_model_final_decay=.003_train_acc")
             torch.save(FP, "parallel_model_final_decay=.003_train_FP")
             torch.save(FN, "parallel_model_final_decay=.003_train_FN")
