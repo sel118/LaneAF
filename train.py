@@ -20,7 +20,6 @@ import cv2
 import sys
 import losses
 import utils
-from utils import Accuracy
 #There were setup steps that Akshay showed us for this pose_dla_dcn in linux command line
 sys.path.append('./DCNv2/build/lib.linux-x86_64-3.7')
 sys.path.append('./DCNv2/')
@@ -84,12 +83,12 @@ def train(batch_size, trainLoader, valLoader, criterion, check_num = 5):
             labels_cpu = labels.to(cpu_device).detach().numpy()
             segLabel_cpu = segLabel.to(cpu_device).detach().numpy()
             del outputs
-            Acc, false_neg, false_pos = Accuracy(output_cpu, labels_cpu)
-            comp_matrix = torch.from_numpy(Comparison(output_cpu, segLabel_cpu))
+            Acc, false_neg, false_pos = utils.Accuracy(output_cpu, labels_cpu)
+            comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
             comp_matrix = comp_matrix.to(device)
-            mean = MeanValue(emb_outputs, comp_matrix)
-            var_loss = VarLoss(emb_outputs, comp_matrix, mean)
-            dist_loss = Distloss(mean)
+            mean = utils.MeanValue(emb_outputs, comp_matrix)
+            var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
+            dist_loss = losses.Distloss(mean)
             rolling_acc += Acc
             loss += var_loss + dist_loss
             rolling_FP += false_pos
@@ -177,12 +176,12 @@ def Val(epoch, ValLoader, batchSize):
         labels_cpu = labels.to(cpu_device).detach().numpy()
         segLabel_cpu = segLabel.to(cpu_device).detach().numpy()
         del outputs
-        Acc, false_neg, false_pos = Accuracy(output_cpu, labels_cpu)
-        comp_matrix = torch.from_numpy(Comparison(output_cpu, segLabel_cpu))
+        Acc, false_neg, false_pos = utils.Accuracy(output_cpu, labels_cpu)
+        comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
         comp_matrix = comp_matrix.to(device)
-        mean = MeanValue(emb_outputs, comp_matrix)
-        var_loss = VarLoss(emb_outputs, comp_matrix, mean)
-        dist_loss = Distloss(mean)
+        mean = utils.MeanValue(emb_outputs, comp_matrix)
+        var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
+        dist_loss = losses.Distloss(mean)
         rolling_acc += Acc
         rolling_FP += false_pos
         rolling_FN += false_neg
