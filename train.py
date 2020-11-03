@@ -20,6 +20,7 @@ import cv2
 import sys
 import losses
 import utils
+from utils import Accuracy
 #There were setup steps that Akshay showed us for this pose_dla_dcn in linux command line
 sys.path.append('./DCNv2/build/lib.linux-x86_64-3.7')
 sys.path.append('./DCNv2/')
