@@ -57,7 +57,7 @@ def MeanValue(emb_output, Label):
     Means = []
     classes = torch.unique(Label)
     for i in range(1, classes.shape[0]):
-        indeces = torch.nonzero(Label == i, as_tuple=True) #torch.where(Label == i).nonzero()
+        indeces = torch.nonzero(Label == i)#, as_tuple=True) #torch.where(Label == i).nonzero()
         #n x 4 matrix
         pixels = emb_output[indeces[0], :, indeces[2], indeces[3]]
         mean_pixels = torch.mean(pixels, 0)
@@ -69,7 +69,7 @@ def MeanValue(emb_output, Label):
 
 def Cluster(embed, Label):
     outputs_gpu = torch.from_numpy(Label)
-    indices = torch.nonzero(outputs_gpu == 1, as_tuple=True) #torch.where(outputs_gpu == 1)
+    indices = torch.nonzero(outputs_gpu == 1)#, as_tuple=True) #torch.where(outputs_gpu == 1)
     num_clusters = 4
     shape = Label.shape
     new_outputs = torch.zeros(shape[0], shape[1], shape[2], shape[3])
