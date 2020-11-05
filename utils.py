@@ -57,11 +57,12 @@ def MeanValue(emb_output, Label):
     Means = []
     classes = torch.unique(Label)
     for i in range(1, classes.shape[0]):
+        print(Label.shape)
         indeces = (Label == i).nonzero() #torch.nonzero(Label == i)#, as_tuple=True) #torch.where(Label == i)
         #n x 4 matrix
         print(type(indeces))
         print(len(indeces))
-        print(indeces.shape)
+        print(indeces)
         pixels = emb_output[indeces[0], :, indeces[2], indeces[3]]
         mean_pixels = torch.mean(pixels, 0)
         #print(mean_pixels)
