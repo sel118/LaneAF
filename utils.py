@@ -56,6 +56,7 @@ def Comparison(output, segLabel):
 def MeanValue(emb_output, Label):
     Means = []
     classes = torch.unique(Label)
+    print(classes)
     for i in range(1, classes.shape[0]):
         print(Label.shape)
         indeces = (Label == i).nonzero() #torch.nonzero(Label == i)#, as_tuple=True) #torch.where(Label == i)
