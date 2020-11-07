@@ -32,7 +32,6 @@ from pose_dla_dcn import get_pose_net
 
 
 def train(batch_size, trainLoader, valLoader, model, check_num = 5):
-    optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .003)
     lr = 1e-4 
     num_epochs = 30
     weights = torch.tensor([9.6])
@@ -56,6 +55,7 @@ def train(batch_size, trainLoader, valLoader, model, check_num = 5):
         weights = weights.to(device)
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
+    optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .003)
     del weights
     
     for epoch in range(num_epochs):
