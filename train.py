@@ -31,7 +31,7 @@ from pose_dla_dcn import get_pose_net
 # In[ ]:
 
 
-def train(batch_size, trainLoader, valLoader, check_num = 5):
+def train(batch_size, trainLoader, valLoader, model, check_num = 5):
     optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .003)
     counter = 0 
     #initializing containers to store accuracy and loss every epoch
@@ -237,5 +237,5 @@ if __name__ == "__main__":
     del weights'''
     trainLoader, valLoader, _ = dataset.Preprocessing()
     batch_size = 3
-    train(batch_size, trainLoader, valLoader)
+    train(batch_size, trainLoader, valLoader, model)
 
