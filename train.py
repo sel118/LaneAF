@@ -99,7 +99,9 @@ def train(batch_size, trainLoader, valLoader, model, check_num = 5):
             del outputs
             Acc, false_neg, false_pos = utils.Accuracy(output_cpu, labels_cpu)
             comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
-            comp_matrix = comp_matrix.to(device)
+            if use_gpu:
+                comp_matrix = comp_matrix.to(device)
+                
             mean = utils.MeanValue(emb_outputs, comp_matrix)
             var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
             dist_loss = losses.Distloss(mean)
@@ -192,7 +194,9 @@ def Val(epoch, ValLoader, batchSize):
         del outputs
         Acc, false_neg, false_pos = utils.Accuracy(output_cpu, labels_cpu)
         comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
-        comp_matrix = comp_matrix.to(device)
+        if use_gpu:
+            comp_matrix = comp_matrix.to(device)
+            
         mean = utils.MeanValue(emb_outputs, comp_matrix)
         var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
         dist_loss = losses.Distloss(mean)
