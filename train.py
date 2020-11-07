@@ -31,7 +31,7 @@ from pose_dla_dcn import get_pose_net
 # In[ ]:
 
 
-def train(batch_size, trainLoader, valLoader, criterion, check_num = 5):
+def train(batch_size, trainLoader, valLoader, check_num = 5):
     optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .003)
     counter = 0 
     #initializing containers to store accuracy and loss every epoch
@@ -44,6 +44,17 @@ def train(batch_size, trainLoader, valLoader, criterion, check_num = 5):
     val_FP = []
     val_FN = []
     sigmoid = nn.Sigmoid()
+    use_gpu = torch.cuda.is_available()
+    cpu_device = torch.device("cpu")
+    #checking if GPU is available for use
+    if use_gpu:
+        device = torch.device("cuda:0")
+        model = model.to(device)
+        weights = weights.to(device)
+    
+    criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
+    del weights
+    
     for epoch in range(num_epochs):
         if epoch == 3:
             optimizer = optim.Adam(model.parameters(), lr = 5e-5, weight_decay = .003) 
@@ -212,7 +223,9 @@ if __name__ == "__main__":
     model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
     #model = torch.load('parallel_model_earlyStop=loss')
     #optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .005)
-    use_gpu = torch.cuda.is_available()
+    
+    #We moved this into the train function to test if the .to(device) is out of scope of the train function
+    '''use_gpu = torch.cuda.is_available()
     cpu_device = torch.device("cpu")
     #checking if GPU is available for use
     if use_gpu:
@@ -221,8 +234,8 @@ if __name__ == "__main__":
         weights = weights.to(device)
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
-    del weights
+    del weights'''
     trainLoader, valLoader, _ = dataset.Preprocessing()
     batch_size = 3
-    train(batch_size, trainLoader, valLoader, criterion)
+    train(batch_size, trainLoader, valLoader)
 
