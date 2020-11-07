@@ -33,6 +33,9 @@ from pose_dla_dcn import get_pose_net
 
 def train(batch_size, trainLoader, valLoader, model, check_num = 5):
     optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .003)
+    lr = 1e-4 
+    num_epochs = 30
+    weights = torch.tensor([9.6])
     counter = 0 
     #initializing containers to store accuracy and loss every epoch
     train_losses = []
