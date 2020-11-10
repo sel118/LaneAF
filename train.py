@@ -127,7 +127,7 @@ def train(batch_size, trainLoader, valLoader, model, check_num = 5):
         accuracies.append(rolling_acc / Normalizing_Factor)
         FP.append(rolling_FP / Normalizing_Factor)
         FN.append(rolling_FN / Normalizing_Factor)
-        loss_val, acc_val, Fn_val, Fp_val = Val(epoch, valLoader, batch_size, use_gpu, device)
+        loss_val, acc_val, Fn_val, Fp_val = Val(epoch, valLoader, batch_size, use_gpu, device, criterion, cpu_device)
         val_losses.append(loss_val)
         val_accuracies.append(acc_val)
         val_FP.append(Fp_val)
@@ -163,7 +163,7 @@ def train(batch_size, trainLoader, valLoader, model, check_num = 5):
             torch.save(val_FN, "parallel_model_final_decay=.003_val_FN")
             
             
-def Val(epoch, ValLoader, batchSize, use_gpu, device):
+def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
     model.eval()
     ts = time.time()
     rolling_loss = 0
@@ -214,7 +214,7 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device):
         torch.cuda.empty_cache()
 
     print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
-    Normalizing_Factor = len(ValLoader) * batch_size
+    Normalizing_Factor = len(ValLoader) * batchSize
     rolling_acc /= Normalizing_Factor
     rolling_loss /= Normalizing_Factor
     rolling_FP /= Normalizing_Factor
