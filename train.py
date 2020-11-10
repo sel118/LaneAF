@@ -163,7 +163,7 @@ def train(batch_size, trainLoader, valLoader, model, check_num = 5):
             torch.save(val_FN, "parallel_model_final_decay=.003_val_FN")
             
             
-def Val(epoch, ValLoader, batchSize, use_gpu):
+def Val(epoch, ValLoader, batchSize, use_gpu, device):
     model.eval()
     ts = time.time()
     rolling_loss = 0
