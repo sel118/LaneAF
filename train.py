@@ -127,7 +127,7 @@ def train(batch_size, trainLoader, valLoader, model, check_num = 5):
         accuracies.append(rolling_acc / Normalizing_Factor)
         FP.append(rolling_FP / Normalizing_Factor)
         FN.append(rolling_FN / Normalizing_Factor)
-        loss_val, acc_val, Fn_val, Fp_val = Val(epoch, valLoader, batch_size)
+        loss_val, acc_val, Fn_val, Fp_val = Val(epoch, valLoader, batch_size, use_gpu)
         val_losses.append(loss_val)
         val_accuracies.append(acc_val)
         val_FP.append(Fp_val)
@@ -163,7 +163,7 @@ def train(batch_size, trainLoader, valLoader, model, check_num = 5):
             torch.save(val_FN, "parallel_model_final_decay=.003_val_FN")
             
             
-def Val(epoch, ValLoader, batchSize):
+def Val(epoch, ValLoader, batchSize, use_gpu):
     model.eval()
     ts = time.time()
     rolling_loss = 0
