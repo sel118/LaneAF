@@ -127,7 +127,7 @@ def train(batch_size, trainLoader, valLoader, model, check_num = 5):
         accuracies.append(rolling_acc / Normalizing_Factor)
         FP.append(rolling_FP / Normalizing_Factor)
         FN.append(rolling_FN / Normalizing_Factor)
-        loss_val, acc_val, Fn_val, Fp_val = Val(epoch, valLoader, batch_size, use_gpu)
+        loss_val, acc_val, Fn_val, Fp_val = Val(epoch, valLoader, batch_size, use_gpu, device)
         val_losses.append(loss_val)
         val_accuracies.append(acc_val)
         val_FP.append(Fp_val)
