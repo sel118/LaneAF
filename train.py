@@ -31,11 +31,8 @@ from pose_dla_dcn import get_pose_net
 # In[ ]:
 
 
-def train(batch_size, trainLoader, valLoader, model, check_num = 5):
-    lr = 1e-4 
-    num_epochs = 30
-    weights = torch.tensor([9.6])
-    counter = 0 
+def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, check_num = 5):
+    #counter = 0 
     #initializing containers to store accuracy and loss every epoch
     train_losses = []
     accuracies = []
@@ -244,5 +241,5 @@ if __name__ == "__main__":
     del weights'''
     trainLoader, valLoader, _ = dataset.Preprocessing()
     batch_size = 3
-    train(batch_size, trainLoader, valLoader, model)
+    train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model)
 
