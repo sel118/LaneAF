@@ -230,6 +230,9 @@ class TuSimple(Dataset):
 
             #if no lane pixels are found, then skip the PAF embedding
                 if prev_row_index[0].size == 0 or cur_row_index[0].size == 0:
+                    prev_row = cur_row
+                    prev_row_index = cur_row_index
+                    avg_prev_row_index = avg_cur_row_index
                     continue
 
 
