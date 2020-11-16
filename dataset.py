@@ -20,12 +20,13 @@ class TuSimple(Dataset):
     VAL_SET = ['label_data_0531.json']
     TEST_SET = ['test_label.json']
 
-    def __init__(self, path, image_set, img_transforms=None):
+    def __init__(self, path, image_set, img_transforms=None, generate_pafs = False):
         super(TuSimple, self).__init__()
         assert image_set in ('train', 'val', 'test'), "image_set is not valid!"
         self.data_dir_path = path
         self.image_set = image_set
         self.img_transforms = img_transforms
+        self.generate_pafs = generate_pafs
 
         if not os.path.exists(os.path.join(path, "seg_label")):
             print("Label is going to get generated into dir: {} ...".format(os.path.join(path, "seg_label")))
@@ -68,6 +69,9 @@ class TuSimple(Dataset):
         sample['binary_mask'] = cv2.resize(sample['binary_mask'], (320, 192))
         sample['binary_mask'] = sample['binary_mask'][np.newaxis, ...]
         sample['segLabel'] = cv2.resize(sample['segLabel'], (320, 192))
+        #call Generate PAF here before we add new axis to segLabel
+        if self.generate_pafs:
+            #call generatePAFs here
         sample['segLabel'] = sample['segLabel'][np.newaxis, ...]
         #print(np.unique(sample['segLabel']))
         sample['binary_mask'][sample['binary_mask'] >= 1] = 1
@@ -199,6 +203,48 @@ class TuSimple(Dataset):
                    'img_name': [x['img_name'] for x in batch]}
 
         return samples
+    
+    def generatePAFs(Label):
+    LabelSize = Label.shape
+    #Creating PAF array
+    NumLanes = np.max(Label)
+    PAFs = np.zeros((LabelSize[0], LabelSize[1], 2))
+
+    '''prev_row = Label[0,:]
+    prev_row_index = np.where(prev_row == 1)
+    print(prev_row_index[0].size == 0)
+    average_prev_row_index = np.average(prev_row_index)
+    print(math.isnan(average_prev_row_index))'''
+
+    #Generating PAFs
+    for i in range(1, NumLanes + 1):
+        #Searching for previous lane pixels that match with the lane we are looking for
+        prev_row = Label[LabelSize[0] - 1,:]
+        prev_row_index = np.where(prev_row == i)
+        avg_prev_row_index = np.average(prev_row_index)
+
+        for j in range(LabelSize[0] - 1, 0, -1):
+            cur_row = Label[j - 1, :]
+            cur_row_index = np.where(cur_row == i)
+            avg_cur_row_index = np.average(cur_row_index)
+
+            #if no lane pixels are found, then skip the PAF embedding
+            if prev_row_index[0].size == 0 or cur_row_index[0].size == 0:
+                continue
+
+
+            #We kept the convention of vec = [rows, cols] or [y, x] instead of [x, y]
+            vec = np.array([1, avg_cur_row_index - avg_prev_row_index])
+            unit_vec = vec / np.linalg.norm(vec)
+            PAFs[j, prev_row_index, 0] = unit_vec[0]
+            PAFs[j, prev_row_index,  1] = unit_vec[1]
+
+            #Set previous row to current row to save computation time
+            prev_row = cur_row
+            prev_row_index = cur_row_index
+            avg_prev_row_index = avg_cur_row_index
+    
+    return PAFs
     
     
 def Preprocessing():
