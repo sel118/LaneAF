@@ -25,6 +25,8 @@ def generatePAFs(label, viz=False):
     # loop over each lane
     for l in range(1, num_lanes+1):
         fg_pts_y, fg_pts_x = np.where(label == l) # foreground pt locations
+        if len(fg_pts_y) == 0:
+            continue
         x_lane, y_lane, vec_lane = [], [], [] # mean lane locations and direction vectors
 
         # lane thinning and preprocessing
@@ -56,3 +58,6 @@ def generatePAFs(label, viz=False):
         plt.show()
 
     return PAF
+
+#label = cv2.imread('test.png')
+#PAF = generatePAFs(label[:, :, 0], viz=True)
