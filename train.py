@@ -73,18 +73,24 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
         rolling_FN = 0
         for iter, sample in enumerate(trainLoader):
             optimizer.zero_grad()
+            
+            #Add PAF variable to gpu or cpu, depending on if the gpu is available
             if use_gpu:
                 inputs = sample['img'].to(device)# Move your inputs onto the gpu
-                labels = sample['binary_mask'].to(device,dtype=torch.int)# Move your labels onto the gpu
-                segLabel = sample['segLabel'].to(device,dtype=torch.int)
-                
+                labels = sample['binary_mask'].to(device, dtype=torch.int)# Move your labels onto the gpu
+                segLabel = sample['segLabel'].to(device, dtype=torch.int)
+                pafLabel = sample['paf'].to(device, dtype=torch.float32)
+             
+            # Unpack variables into inputs and labels
             else:
-                inputs, labels, segLabel = (sample['img'], sample['binary_mask'], sample['segLabel']) # Unpack variables into inputs and labels
+                inputs, labels, segLabel, pafLabel = (sample['img'], sample['binary_mask'], 
+                                                      sample['segLabel'], sample['paf']) 
 
             #print(torch.unique(segLabel))
             detector_ops = model(inputs)[-1]
             outputs = detector_ops['hm']
-            emb_outputs = detector_ops['emb']
+            #emb_outputs = detector_ops['emb']
+            cart_outputs = decetor_ops['cart']
             #print(outputs.shape)
             del inputs
             torch.cuda.empty_cache()
@@ -95,18 +101,27 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             segLabel_cpu = segLabel.to(cpu_device).detach().numpy()
             del outputs
             Acc, false_neg, false_pos = utils.Accuracy(output_cpu, labels_cpu)
-            comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
+            '''comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
             if use_gpu:
                 comp_matrix = comp_matrix.to(device)
                 
             mean = utils.MeanValue(emb_outputs, comp_matrix)
             var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
-            dist_loss = losses.Distloss(mean)
-            rolling_acc += Acc
-            loss += var_loss + dist_loss
+            dist_loss = losses.Distloss(mean)'''
+            
+            #add variable name for input PAFs
+            l2_loss = losses.PAFLoss(cart_outputs, pafLabel)
+            
+            rolling_acc += Ac
+            #loss += var_loss + dist_loss
+            loss += l2_loss
+            
             rolling_FP += false_pos
             rolling_FN += false_neg
-            del labels,emb_outputs, comp_matrix, mean, var_loss, dist_loss
+            
+            #del labels, emb_outputs, comp_matrix, mean, var_loss, dist_loss
+            
+            del labels, segLabel, pafLabel, cart_outputs, l2_loss
             torch.cuda.empty_cache()
             loss.backward()
             optimizer.step()
@@ -132,11 +147,11 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
         model.train()
         #Checking if current model is better than the previous best model
         if epoch == 0:
-            torch.save(model, 'parallel_model_final_decay=.003')
+            torch.save(model, 'PAF_Model_V1_Best')
         else:
             if torch.argmin(torch.Tensor(val_losses)) == epoch:
                 print("current-model saved as best model")
-                torch.save(model, 'parallel_model_final_decay=.003')
+                torch.save(model, 'PAF_Model_V1_Best')
                 
         #Early Stopping Not implemented (uncomment if needed)
         '''if counter == check_num:
@@ -150,14 +165,14 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
         if epoch == (num_epochs - 1):
             print("training is finished")
             #torch.save(model, 'parallel_model')
-            torch.save(train_losses, "parallel_model_final_decay=.003_train_loss")
-            torch.save(accuracies, "parallel_model_final_decay=.003_train_acc")
-            torch.save(FP, "parallel_model_final_decay=.003_train_FP")
-            torch.save(FN, "parallel_model_final_decay=.003_train_FN")
-            torch.save(val_losses, "parallel_model_final_decay=.003_val_loss")
-            torch.save(val_accuracies, "parallel_model_final_decay=.003_val_acc")
-            torch.save(val_FP, "parallel_model_final_decay=.003_val_FP")
-            torch.save(val_FN, "parallel_model_final_decay=.003_val_FN")
+            torch.save(train_losses, "PAF_Model_V1_train_loss")
+            torch.save(accuracies, "PAF_Model_V1_train_acc")
+            torch.save(FP, "PAF_Model_V1_train_FP")
+            torch.save(FN, "PAF_Model_V1_train_FN")
+            torch.save(val_losses, "PAF_Model_V1_val_loss")
+            torch.save(val_accuracies, "PAF_Model_V1_val_acc")
+            torch.save(val_FP, "PAF_Model_V1_val_FP")
+            torch.save(val_FN, "PAF_Model_V1_val_FN")
             
             
 def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
@@ -168,18 +183,24 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
     rolling_FP = 0
     rolling_FN = 0
     sigmoid = nn.Sigmoid()
+    
     for iter, sample in enumerate(ValLoader):
+        
+        #Add PAF variable to gpu or cpu, depending on if the gpu is available
         if use_gpu:
             inputs = sample['img'].to(device)# Move your inputs onto the gpu
             labels = sample['binary_mask'].to(device,dtype=torch.int)# Move your labels onto the gpu
             segLabel = sample['segLabel'].to(device,dtype=torch.int)
+            pafLabel = sample['paf'].to(device, dtype=torch.float32)
             
         else:
-            inputs, labels, segLabel = (sample['img'], sample['binary_mask'], sample['segLabel'])# Unpack variables into inputs and labels
+            inputs, labels, segLabel, pafLabel = (sample['img'], sample['binary_mask'], 
+                                                  sample['segLabel'], sample['paf'])# Unpack variables into inputs and labels
             
         detector_ops = model(inputs)[-1]
         outputs = detector_ops['hm']
-        emb_outputs = detector_ops['emb']
+        #emb_outputs = detector_ops['emb']
+        cart_outputs = detector_ops['cart']
         #print(outputs.shape)
         del inputs
         torch.cuda.empty_cache()
@@ -190,18 +211,25 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
         segLabel_cpu = segLabel.to(cpu_device).detach().numpy()
         del outputs
         Acc, false_neg, false_pos = utils.Accuracy(output_cpu, labels_cpu)
-        comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
+        '''comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
         if use_gpu:
             comp_matrix = comp_matrix.to(device)
             
         mean = utils.MeanValue(emb_outputs, comp_matrix)
         var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
-        dist_loss = losses.Distloss(mean)
+        dist_loss = losses.Distloss(mean)'''
+        
+        #add variable name for input PAFs
+        l2_loss = losses.PAFLoss(cart_outputs, pafLabel)
+        
+        
         rolling_acc += Acc
         rolling_FP += false_pos
         rolling_FN += false_neg
-        loss += var_loss + dist_loss
-        del labels,emb_outputs, comp_matrix, mean, var_loss, dist_loss
+        #loss += var_loss + dist_loss
+        loss += l2_loss
+        #del labels, emb_outputs, comp_matrix, mean, var_loss, dist_loss
+        del labels, segLabel, pafLabel, cart_outputs, l2_loss
 
         if iter% 10 == 0:
             print("epoch{}, iter{}, loss: {}, acc: {}, FP: {}, FN: {}".format(epoch, iter, loss.item(), Acc, false_pos, false_neg))
@@ -223,7 +251,8 @@ if __name__ == "__main__":
     lr = 1e-4 
     num_epochs = 30
     weights = torch.tensor([9.6])
-    heads = {'hm': 1, 'emb': 4}
+    #heads = {'hm': 1, 'emb': 4}
+    heads = {'hm': 1, 'cart': 2}
     model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
     #model = torch.load('parallel_model_earlyStop=loss')
     #optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .005)
