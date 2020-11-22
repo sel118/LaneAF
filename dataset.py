@@ -26,7 +26,6 @@ class TuSimple(Dataset):
         self.data_dir_path = path
         self.image_set = image_set
         self.img_transforms = img_transforms
-        self.generate_pafs = generate_pafs
 
         if not os.path.exists(os.path.join(path, "seg_label")):
             print("Label is going to get generated into dir: {} ...".format(os.path.join(path, "seg_label")))
@@ -36,6 +35,7 @@ class TuSimple(Dataset):
     def createIndex(self):
         self.img_list = []
         self.segLabel_list = []
+        self.PAFLabel_list = []
 
         listfile = os.path.join(self.data_dir_path, "seg_label", "list", "{}_gt.txt".format(self.image_set))
         if not os.path.exists(listfile):
@@ -47,6 +47,7 @@ class TuSimple(Dataset):
                 l = line.split(" ")
                 self.img_list.append(os.path.join(self.data_dir_path, l[0][1:]))  # l[0][1:]  get rid of the first '/' so as for os.path.join
                 self.segLabel_list.append(os.path.join(self.data_dir_path, l[1][1:]))
+                self.PAFLabel_list.append(os.path.join(self.data_dir_path, l[2][1:]))
 
     def __getitem__(self, idx):
         img = cv2.imread(self.img_list[idx])
@@ -58,10 +59,12 @@ class TuSimple(Dataset):
             segLabel = None'''
         
         segLabel = cv2.imread(self.segLabel_list[idx])[:,:,0]
+        PAFLabel = np.load(self.PAFLabel_list[idx])
         sample = {'img': img,
                   'segLabel': segLabel,
                   'img_name': self.img_list[idx],
-                  'binary_mask': segLabel}
+                  'binary_mask': segLabel, 
+                  'paf': PAFLabel}
 
         if self.img_transforms is not None:
             sample['img'] = self.img_transforms(sample['img'])
@@ -69,6 +72,7 @@ class TuSimple(Dataset):
         sample['binary_mask'] = cv2.resize(sample['binary_mask'], (320, 192))
         sample['binary_mask'] = sample['binary_mask'][np.newaxis, ...]
         sample['segLabel'] = cv2.resize(sample['segLabel'], (320, 192))
+        sample['paf'] = np.resize(sample['paf'], (320,192,2))
         #call Generate PAF here before we add new axis to segLabel
         #if self.generate_pafs:
             #call generatePAFs here
@@ -173,10 +177,14 @@ class TuSimple(Dataset):
                 cv2.imwrite(seg_path, seg_img)
 
                 seg_path = "/".join([save_dir, *img_path.split("/")[1:3], img_name[:-3]+"png"])
+                paf_path = "/".join([save_dir, *img_path.split("/")[1:3], img_name[:-3]+"npy"])
+                if paf_path[0] != '/':
+                    paf_path = '/' + paf_path
                 if seg_path[0] != '/':
                     seg_path = '/' + seg_path
                 if img_path[0] != '/':
                     img_path = '/' + img_path
+                list_str.insert(0, paf_path)
                 list_str.insert(0, seg_path)
                 list_str.insert(0, img_path)
                 list_str = " ".join(list_str) + "\n"
