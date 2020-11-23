@@ -20,6 +20,7 @@ import cv2
 import sys
 import losses
 import utils
+import paf_generator
 #There were setup steps that Akshay showed us for this pose_dla_dcn in linux command line
 sys.path.append('./DCNv2/build/lib.linux-x86_64-3.7')
 sys.path.append('./DCNv2/')
@@ -269,6 +270,7 @@ if __name__ == "__main__":
     criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
     del weights'''
     trainLoader, valLoader, _ = dataset.Preprocessing()
+    paf_generator.generate_pafs()
     batch_size = 3
     train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model)
 
