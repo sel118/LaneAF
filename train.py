@@ -270,7 +270,7 @@ if __name__ == "__main__":
     criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
     del weights'''
     trainLoader, valLoader, _ = dataset.Preprocessing()
-    paf_generator.generate_pafs()
+    #paf_generator.generate_pafs() # If PAF generated files do not exist, uncomment this line
     batch_size = 3
     train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model)
 
