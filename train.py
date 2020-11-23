@@ -92,9 +92,8 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             outputs = detector_ops['hm']
             #emb_outputs = detector_ops['emb']
             cart_outputs = detector_ops['cart']
-            print(cart_outputs.shape)
-            cart_outputs = np.resize(cart_outputs, (320,192,2))
-            print(cart_outputs.shape)
+            cart_outputs = cart_outputs[0,:,:,:]
+            cart_outputs = torch.reshape(cart_outputs, (320,192,2))
             del inputs
             torch.cuda.empty_cache()
             loss = criterion(outputs, labels.type_as(outputs))
