@@ -20,6 +20,7 @@ import cv2
 import sys
 import losses
 import utils
+import paf_generator
 #There were setup steps that Akshay showed us for this pose_dla_dcn in linux command line
 sys.path.append('./DCNv2/build/lib.linux-x86_64-3.7')
 sys.path.append('./DCNv2/')
@@ -90,7 +91,7 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             detector_ops = model(inputs)[-1]
             outputs = detector_ops['hm']
             #emb_outputs = detector_ops['emb']
-            cart_outputs = detecor_ops['cart']
+            cart_outputs = detector_ops['cart']
             #print(outputs.shape)
             del inputs
             torch.cuda.empty_cache()
