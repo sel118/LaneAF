@@ -9,6 +9,8 @@ from PIL import Image
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
+import paf_generator
+
 class TuSimple(Dataset):
     """
     image_set is splitted into three partitions: train, val, test.
@@ -29,7 +31,9 @@ class TuSimple(Dataset):
 
         if not os.path.exists(os.path.join(path, "seg_label")):
             print("Label is going to get generated into dir: {} ...".format(os.path.join(path, "seg_label")))
+            paf_generator.generate_pafs()
             self.generate_label()
+            
         self.createIndex()
 
     def createIndex(self):
