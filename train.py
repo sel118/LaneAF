@@ -114,7 +114,7 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             #add variable name for input PAFs
             l2_loss = losses.PAFLoss(cart_outputs, pafLabel)
             
-            rolling_acc += Ac
+            rolling_acc += Acc
             #loss += var_loss + dist_loss
             loss += l2_loss
             
