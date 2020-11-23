@@ -91,7 +91,7 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             detector_ops = model(inputs)[-1]
             outputs = detector_ops['hm']
             #emb_outputs = detector_ops['emb']
-            cart_outputs = decetor_ops['cart']
+            cart_outputs = detecor_ops['cart']
             #print(outputs.shape)
             del inputs
             torch.cuda.empty_cache()
