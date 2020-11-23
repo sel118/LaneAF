@@ -203,6 +203,8 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
         outputs = detector_ops['hm']
         #emb_outputs = detector_ops['emb']
         cart_outputs = detector_ops['cart']
+        cart_outputs = cart_outputs[0,:,:,:]
+        cart_outputs = torch.reshape(cart_outputs, (320,192,2))
         #print(outputs.shape)
         del inputs
         torch.cuda.empty_cache()
