@@ -96,7 +96,8 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             vaf_outputs = vaf_outputs[0,:,:,:]
             vaf_outputs = torch.reshape(vaf_outputs, (320,192,2))
             haf_outputs = haf_outputs[0,:,:,:]
-            haf_outputs = torch.reshape(haf_outputs, (320,192,1))
+            print(haf_outputs.shape)
+            haf_outputs = torch.reshape(haf_outputs, (320,192))
             del inputs
             torch.cuda.empty_cache()
             loss = criterion(outputs, labels.type_as(outputs))
