@@ -9,7 +9,7 @@ from PIL import Image
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
-import paf_generator
+import af_generator
 
 class TuSimple(Dataset):
     """
@@ -22,7 +22,7 @@ class TuSimple(Dataset):
     VAL_SET = ['label_data_0531.json']
     TEST_SET = ['test_label.json']
 
-    def __init__(self, path, image_set, img_transforms=None, generate_pafs = False):
+    def __init__(self, path, image_set, img_transforms=None):
         super(TuSimple, self).__init__()
         assert image_set in ('train', 'val', 'test'), "image_set is not valid!"
         self.data_dir_path = path
@@ -31,7 +31,7 @@ class TuSimple(Dataset):
 
         if not os.path.exists(os.path.join(path, "seg_label")):
             print("Label is going to get generated into dir: {} ...".format(os.path.join(path, "seg_label")))
-            paf_generator.generate_pafs()
+            af_generator.generate_afs()
             self.generate_label()
             
         self.createIndex()
@@ -39,7 +39,7 @@ class TuSimple(Dataset):
     def createIndex(self):
         self.img_list = []
         self.segLabel_list = []
-        self.PAFLabel_list = []
+        self.AFLabel_list = []
 
         listfile = os.path.join(self.data_dir_path, "seg_label", "list", "{}_gt.txt".format(self.image_set))
         if not os.path.exists(listfile):
@@ -51,7 +51,7 @@ class TuSimple(Dataset):
                 l = line.split(" ")
                 self.img_list.append(os.path.join(self.data_dir_path, l[0][1:]))  # l[0][1:]  get rid of the first '/' so as for os.path.join
                 self.segLabel_list.append(os.path.join(self.data_dir_path, l[1][1:]))
-                self.PAFLabel_list.append(os.path.join(self.data_dir_path, l[2][1:]))
+                self.AFLabel_list.append(os.path.join(self.data_dir_path, l[2][1:]))
 
     def __getitem__(self, idx):
         img = cv2.imread(self.img_list[idx])
@@ -63,12 +63,15 @@ class TuSimple(Dataset):
             segLabel = None'''
         
         segLabel = cv2.imread(self.segLabel_list[idx])[:,:,0]
-        PAFLabel = np.load(self.PAFLabel_list[idx])
+        AFLabel = np.load(self.AFLabel_list[idx])
+        VAFLabel = AFLabel[:,:,0:2]
+        HAFLabel = AFLabel[:,:,2]
         sample = {'img': img,
                   'segLabel': segLabel,
                   'img_name': self.img_list[idx],
                   'binary_mask': segLabel, 
-                  'paf': PAFLabel}
+                  'vaf': VAFLabel,
+                  'haf': HAFLabel}
 
         if self.img_transforms is not None:
             sample['img'] = self.img_transforms(sample['img'])
@@ -76,10 +79,8 @@ class TuSimple(Dataset):
         sample['binary_mask'] = cv2.resize(sample['binary_mask'], (320, 192))
         sample['binary_mask'] = sample['binary_mask'][np.newaxis, ...]
         sample['segLabel'] = cv2.resize(sample['segLabel'], (320, 192))
-        sample['paf'] = np.resize(sample['paf'], (320,192,2))
-        #call Generate PAF here before we add new axis to segLabel
-        #if self.generate_pafs:
-            #call generatePAFs here
+        sample['vaf'] = np.resize(sample['vaf'], (320,192,2))
+        sample['haf'] = np.resize(sample['haf'], (320,192))
         sample['segLabel'] = sample['segLabel'][np.newaxis, ...]
         #print(np.unique(sample['segLabel']))
         sample['binary_mask'][sample['binary_mask'] >= 1] = 1

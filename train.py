@@ -20,7 +20,6 @@ import cv2
 import sys
 import losses
 import utils
-import paf_generator
 #There were setup steps that Akshay showed us for this pose_dla_dcn in linux command line
 sys.path.append('./DCNv2/build/lib.linux-x86_64-3.7')
 sys.path.append('./DCNv2/')
@@ -80,20 +79,24 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
                 inputs = sample['img'].to(device)# Move your inputs onto the gpu
                 labels = sample['binary_mask'].to(device, dtype=torch.int)# Move your labels onto the gpu
                 segLabel = sample['segLabel'].to(device, dtype=torch.int)
-                pafLabel = sample['paf'].to(device, dtype=torch.float32)
+                vafLabel = sample['vaf'].to(device, dtype=torch.float32)
+                hafLabel = sample['haf'].to(device, dtype=torch.float32)
              
             # Unpack variables into inputs and labels
             else:
-                inputs, labels, segLabel, pafLabel = (sample['img'], sample['binary_mask'], 
-                                                      sample['segLabel'], sample['paf']) 
+                inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['binary_mask'], 
+                                                      sample['segLabel'], sample['vaf'], sample['haf']) 
 
             #print(torch.unique(segLabel))
             detector_ops = model(inputs)[-1]
             outputs = detector_ops['hm']
             #emb_outputs = detector_ops['emb']
-            cart_outputs = detector_ops['cart']
-            cart_outputs = cart_outputs[0,:,:,:]
-            cart_outputs = torch.reshape(cart_outputs, (320,192,2))
+            vaf_outputs = detector_ops['vaf']
+            haf_outputs = detector_ops['haf']
+            vaf_outputs = vaf_outputs[0,:,:,:]
+            vaf_outputs = torch.reshape(vaf_outputs, (320,192,2))
+            haf_outputs = haf_outputs[0,:,:,:]
+            haf_outputs = torch.reshape(haf_outputs, (320,192,1))
             del inputs
             torch.cuda.empty_cache()
             loss = criterion(outputs, labels.type_as(outputs))
@@ -112,18 +115,19 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             dist_loss = losses.Distloss(mean)'''
             
             #add variable name for input PAFs
-            l2_loss = losses.PAFLoss(cart_outputs, pafLabel)
+            vaf_l2_loss = losses.AFLoss(vaf_outputs, vafLabel)
+            haf_l2_loss = losses.AFLoss(haf_outputs, hafLabel)
             
             rolling_acc += Acc
             #loss += var_loss + dist_loss
-            loss += l2_loss
+            loss += vaf_l2_loss + haf_l2_loss
             
             rolling_FP += false_pos
             rolling_FN += false_neg
             
             #del labels, emb_outputs, comp_matrix, mean, var_loss, dist_loss
             
-            del labels, segLabel, pafLabel, cart_outputs, l2_loss
+            del labels, segLabel, vafLabel, hafLabel, vaf_outputs, haf_outputs, vaf_l2_loss, haf_l2_loss
             torch.cuda.empty_cache()
             loss.backward()
             optimizer.step()
@@ -193,19 +197,23 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
             inputs = sample['img'].to(device)# Move your inputs onto the gpu
             labels = sample['binary_mask'].to(device,dtype=torch.int)# Move your labels onto the gpu
             segLabel = sample['segLabel'].to(device,dtype=torch.int)
-            pafLabel = sample['paf'].to(device, dtype=torch.float32)
-            
-        else:
-            inputs, labels, segLabel, pafLabel = (sample['img'], sample['binary_mask'], 
-                                                  sample['segLabel'], sample['paf'])# Unpack variables into inputs and labels
+            vafLabel = sample['vaf'].to(device, dtype=torch.float32)
+            hafLabel = sample['haf'].to(device, dtype=torch.float32)
+             
+            # Unpack variables into inputs and labels
+            else:
+                inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['binary_mask'], 
+                                                      sample['segLabel'], sample['vaf'], sample['haf']) 
             
         detector_ops = model(inputs)[-1]
         outputs = detector_ops['hm']
         #emb_outputs = detector_ops['emb']
-        cart_outputs = detector_ops['cart']
-        cart_outputs = cart_outputs[0,:,:,:]
-        cart_outputs = torch.reshape(cart_outputs, (320,192,2))
-        #print(outputs.shape)
+        vaf_outputs = detector_ops['vaf']
+        haf_outputs = detector_ops['haf']
+        vaf_outputs = vaf_outputs[0,:,:,:]
+        vaf_outputs = torch.reshape(vaf_outputs, (320,192,2))
+        haf_outputs = haf_outputs[0,:,:,:]
+        haf_outputs = torch.reshape(haf_outputs, (320,192,1))
         del inputs
         torch.cuda.empty_cache()
         loss = criterion(outputs, labels.type_as(outputs))
@@ -218,22 +226,25 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
         '''comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
         if use_gpu:
             comp_matrix = comp_matrix.to(device)
-            
+
         mean = utils.MeanValue(emb_outputs, comp_matrix)
         var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
         dist_loss = losses.Distloss(mean)'''
-        
+
         #add variable name for input PAFs
-        l2_loss = losses.PAFLoss(cart_outputs, pafLabel)
-        
-        
+        vaf_l2_loss = losses.AFLoss(vaf_outputs, vafLabel)
+        haf_l2_loss = losses.AFLoss(haf_outputs, hafLabel)
+
         rolling_acc += Acc
+        #loss += var_loss + dist_loss
+        loss += vaf_l2_loss + haf_l2_loss
+
         rolling_FP += false_pos
         rolling_FN += false_neg
-        #loss += var_loss + dist_loss
-        loss += l2_loss
+
         #del labels, emb_outputs, comp_matrix, mean, var_loss, dist_loss
-        del labels, segLabel, pafLabel, cart_outputs, l2_loss
+
+        del labels, segLabel, vafLabel, hafLabel, vaf_outputs, haf_outputs, vaf_l2_loss, haf_l2_loss
 
         if iter% 10 == 0:
             print("epoch{}, iter{}, loss: {}, acc: {}, FP: {}, FN: {}".format(epoch, iter, loss.item(), Acc, false_pos, false_neg))
@@ -256,7 +267,7 @@ if __name__ == "__main__":
     num_epochs = 30
     weights = torch.tensor([9.6])
     #heads = {'hm': 1, 'emb': 4}
-    heads = {'hm': 1, 'cart': 2}
+    heads = {'hm': 1, 'vaf': 2, 'haf': 1}
     model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
     #model = torch.load('parallel_model_earlyStop=loss')
     #optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .005)
@@ -273,7 +284,6 @@ if __name__ == "__main__":
     criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
     del weights'''
     trainLoader, valLoader, _ = dataset.Preprocessing()
-    #paf_generator.generate_pafs() # If PAF generated files do not exist, uncomment this line
     batch_size = 3
     train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model)
 

@@ -49,14 +49,23 @@ def VarLoss(emb_output, Label, means):
     return loss / num_classes
     
 
-def PAFLoss(predicted, ground_truth):
+def VAFLoss(predicted, ground_truth):
     '''Predicted: (MxNX2)
        Ground Truth: (MxNx2)
        Return: ||predicted - ground_truth||'''
     Difference = predicted - ground_truth
     #Not sure if you can take norm of 3 dimensional tensor
-    PAFLoss = torch.norm(Difference, p = 2)
-    return PAFLoss
+    VAFLoss = torch.norm(Difference, p = 2)
+    return VAFLoss
+
+def HAFLoss(predicted, ground_truth):
+    '''Predicted: (MxNX2)
+       Ground Truth: (MxNx2)
+       Return: ||predicted - ground_truth||'''
+    Difference = predicted - ground_truth
+    #Not sure if you can take norm of 3 dimensional tensor
+    HAFLoss = torch.norm(Difference, p = 2)
+    return HAFLoss
     
     
 def Distloss(mean):
