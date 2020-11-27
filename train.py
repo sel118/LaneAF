@@ -115,8 +115,8 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             dist_loss = losses.Distloss(mean)'''
             
             #add variable name for input PAFs
-            vaf_l2_loss = losses.AFLoss(vaf_outputs, vafLabel)
-            haf_l2_loss = losses.AFLoss(haf_outputs, hafLabel)
+            vaf_l2_loss = losses.VAFLoss(vaf_outputs, vafLabel)
+            haf_l2_loss = losses.HAFLoss(haf_outputs, hafLabel)
             
             rolling_acc += Acc
             #loss += var_loss + dist_loss
@@ -232,8 +232,8 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
         dist_loss = losses.Distloss(mean)'''
 
         #add variable name for input PAFs
-        vaf_l2_loss = losses.AFLoss(vaf_outputs, vafLabel)
-        haf_l2_loss = losses.AFLoss(haf_outputs, hafLabel)
+        vaf_l2_loss = losses.VAFLoss(vaf_outputs, vafLabel)
+        haf_l2_loss = losses.HAFLoss(haf_outputs, hafLabel)
 
         rolling_acc += Acc
         #loss += var_loss + dist_loss
