@@ -201,9 +201,9 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
             hafLabel = sample['haf'].to(device, dtype=torch.float32)
              
             # Unpack variables into inputs and labels
-            else:
-                inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['binary_mask'], 
-                                                      sample['segLabel'], sample['vaf'], sample['haf']) 
+        else:
+            inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['binary_mask'], 
+                                                  sample['segLabel'], sample['vaf'], sample['haf']) 
             
         detector_ops = model(inputs)[-1]
         outputs = detector_ops['hm']
