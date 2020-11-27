@@ -31,8 +31,8 @@ class TuSimple(Dataset):
 
         if not os.path.exists(os.path.join(path, "seg_label")):
             print("Label is going to get generated into dir: {} ...".format(os.path.join(path, "seg_label")))
-            af_generator.generate_afs()
             self.generate_label()
+            af_generator.generate_afs()
             
         self.createIndex()
 
