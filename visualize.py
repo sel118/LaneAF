@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-#Remember to take out unnecessary import statements later
 import numpy as np
 import torch
 import json
@@ -21,9 +14,6 @@ import dataset
 import glob
 import matplotlib.image as mpimg
 import utils
-
-
-# In[ ]:
 
 
 Epoch = [i for i in range(1,31)]
@@ -128,4 +118,3 @@ def PlotFP():
     line2 = plt.plot(Epoch, val_FP, label = 'val False Positive')
     plt.legend(loc = 'upper right')
     plt.show()
-

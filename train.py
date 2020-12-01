@@ -1,34 +1,20 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-#Remember to take out unnecessary import statements later
-import numpy as np
-import torch
 import json
+import time
+import sys
+
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+
+import torch
 import torch.optim as optim
 import torch.nn as nn
-import torch.nn.functional as F
-import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-import time
-import matplotlib.pyplot as plt
-import dataset
-import cv2
-import sys
+
+from dataset import TuSimple
 import losses
 import utils
-#There were setup steps that Akshay showed us for this pose_dla_dcn in linux command line
-sys.path.append('./DCNv2/build/lib.linux-x86_64-3.7')
-sys.path.append('./DCNv2/')
-from DCNv2 import dcn_v2
-from dcn_v2 import DCN
-from pose_dla_dcn import get_pose_net
-
-
-# In[ ]:
+from models.dla.pose_dla_dcn import get_pose_net
 
 
 def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, check_num = 5):
@@ -77,15 +63,15 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             #Add PAF variable to gpu or cpu, depending on if the gpu is available
             if use_gpu:
                 inputs = sample['img'].to(device)# Move your inputs onto the gpu
-                labels = sample['binary_mask'].to(device, dtype=torch.int)# Move your labels onto the gpu
-                segLabel = sample['segLabel'].to(device, dtype=torch.int)
+                labels = sample['mask'].to(device, dtype=torch.int)# Move your labels onto the gpu
+                segLabel = sample['seg'].to(device, dtype=torch.int)
                 vafLabel = sample['vaf'].to(device, dtype=torch.float32)
                 hafLabel = sample['haf'].to(device, dtype=torch.float32)
              
             # Unpack variables into inputs and labels
             else:
-                inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['binary_mask'], 
-                                                      sample['segLabel'], sample['vaf'], sample['haf']) 
+                inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['mask'], 
+                                                      sample['seg'], sample['vaf'], sample['haf']) 
 
             #print(torch.unique(segLabel))
             detector_ops = model(inputs)[-1]
@@ -195,15 +181,15 @@ def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
         #Add PAF variable to gpu or cpu, depending on if the gpu is available
         if use_gpu:
             inputs = sample['img'].to(device)# Move your inputs onto the gpu
-            labels = sample['binary_mask'].to(device,dtype=torch.int)# Move your labels onto the gpu
-            segLabel = sample['segLabel'].to(device,dtype=torch.int)
+            labels = sample['mask'].to(device,dtype=torch.int)# Move your labels onto the gpu
+            segLabel = sample['seg'].to(device,dtype=torch.int)
             vafLabel = sample['vaf'].to(device, dtype=torch.float32)
             hafLabel = sample['haf'].to(device, dtype=torch.float32)
              
             # Unpack variables into inputs and labels
         else:
-            inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['binary_mask'], 
-                                                  sample['segLabel'], sample['vaf'], sample['haf']) 
+            inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['mask'], 
+                                                  sample['seg'], sample['vaf'], sample['haf']) 
             
         detector_ops = model(inputs)[-1]
         outputs = detector_ops['hm']
@@ -269,21 +255,10 @@ if __name__ == "__main__":
     #heads = {'hm': 1, 'emb': 4}
     heads = {'hm': 1, 'vaf': 2, 'haf': 1}
     model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
-    #model = torch.load('parallel_model_earlyStop=loss')
-    #optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .005)
-    
-    #We moved this into the train function to test if the .to(device) is out of scope of the train function
-    '''use_gpu = torch.cuda.is_available()
-    cpu_device = torch.device("cpu")
-    #checking if GPU is available for use
-    if use_gpu:
-        device = torch.device("cuda:0")
-        model = model.to(device)
-        weights = weights.to(device)
-    
-    criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
-    del weights'''
-    trainLoader, valLoader, _ = dataset.Preprocessing()
-    batch_size = 3
-    train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model)
 
+    train_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='train'), batch_size=args.batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='val'), batch_size=args.batch_size, shuffle=False, num_workers=4)
+    test_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='test'), batch_size=args.batch_size, shuffle=False, num_workers=4)
+
+    batch_size = 3
+    train(batch_size, lr, num_epochs, weights, train_loader, val_loader, model)

@@ -2,7 +2,7 @@ Pipfile
 Pipfile.lock
 experiments/
 data/
-DCNv2/
+models/dla/DCNv2/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

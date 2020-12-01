@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-#Remember to take out unnecessary import statements later
 import numpy as np
 import torch
 import json
@@ -18,9 +11,6 @@ import matplotlib.pyplot as plt
 import cv2
 import sys
 from kmeans_pytorch import kmeans
-
-
-# In[ ]:
 
 
 def Accuracy(output, label):
@@ -85,4 +75,3 @@ def Cluster(embed, Label):
 
     output = new_outputs
     return output
-

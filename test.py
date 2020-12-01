@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-#Remember to take out unnecessary import statements later
 import numpy as np
 import torch
 import json
@@ -21,15 +14,8 @@ import sys
 import losses
 import utils
 import visualize
-#There were setup steps that Akshay showed us for this pose_dla_dcn in linux command line
-sys.path.append('/home/ksitu/ECE_285/DCNv2/build/lib.linux-x86_64-3.7')
-sys.path.append('/home/ksitu/ECE_285/DCNv2/')
-from DCNv2 import dcn_v2
-from dcn_v2 import DCN
-from pose_dla_dcn import get_pose_net
 
-
-# In[ ]:
+from models.dla.pose_dla_dcn import get_pose_net
 
 
 def Test(batchSize, testLoader, criterion):
@@ -116,4 +102,3 @@ if __name__ == "__main__":
     print("test_acc: ", test_acc * 3)
     print("test_FN: ", test_FN * 3)
     print("test_FP", test_FP * 3)
-

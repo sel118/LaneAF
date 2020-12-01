@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[ ]:
-
-
-#Remember to take out unnecessary import statements later
 import numpy as np
 import torch
 import json
@@ -17,9 +10,6 @@ import time
 import matplotlib.pyplot as plt
 import cv2
 import sys
-
-
-# In[ ]:
 
 
 def VarLoss(emb_output, Label, means):
@@ -47,7 +37,7 @@ def VarLoss(emb_output, Label, means):
         loss += summed_pixels
                
     return loss / num_classes
-    
+
 
 def VAFLoss(predicted, ground_truth):
     '''Predicted: (MxNX2)
@@ -57,6 +47,7 @@ def VAFLoss(predicted, ground_truth):
     #Not sure if you can take norm of 3 dimensional tensor
     VAFLoss = torch.norm(Difference, p = 2)
     return VAFLoss
+
 
 def HAFLoss(predicted, ground_truth):
     '''Predicted: (MxNX2)
@@ -88,4 +79,3 @@ def Distloss(mean):
             loss += delta_minus_mean_relu ** 2            
     
     return loss / num_classes / (num_classes - 1)
-

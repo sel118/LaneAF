@@ -19,7 +19,7 @@ You can alternately find your desired PyTorch wheel from [here](https://download
 
 4) Clone and make DCNv2:
 ```shell
-cd PAFDLA/
+cd models/dla
 git clone https://github.com/CharlesShang/DCNv2
 cd DCNv2
 ./make.sh
