@@ -11,10 +11,10 @@ import torch.optim as optim
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from dataset import TuSimple
-import losses
-import utils
+from datasets.tusimple import TuSimple
 from models.dla.pose_dla_dcn import get_pose_net
+from models.loss import VAFLoss, HAFLoss
+import utils
 
 
 def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, check_num = 5):
@@ -97,12 +97,12 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
                 comp_matrix = comp_matrix.to(device)
                 
             mean = utils.MeanValue(emb_outputs, comp_matrix)
-            var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
-            dist_loss = losses.Distloss(mean)'''
+            var_loss = VarLoss(emb_outputs, comp_matrix, mean)
+            dist_loss = Distloss(mean)'''
             
             #add variable name for input PAFs
-            vaf_l2_loss = losses.VAFLoss(vaf_outputs, vafLabel)
-            haf_l2_loss = losses.HAFLoss(haf_outputs, hafLabel)
+            vaf_l2_loss = VAFLoss(vaf_outputs, vafLabel)
+            haf_l2_loss = HAFLoss(haf_outputs, hafLabel)
             
             rolling_acc += Acc
             #loss += var_loss + dist_loss
@@ -131,7 +131,7 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
         accuracies.append(rolling_acc / Normalizing_Factor)
         FP.append(rolling_FP / Normalizing_Factor)
         FN.append(rolling_FN / Normalizing_Factor)
-        loss_val, acc_val, Fn_val, Fp_val = Val(epoch, valLoader, batch_size, use_gpu, device, criterion, cpu_device)
+        loss_val, acc_val, Fn_val, Fp_val = val(epoch, valLoader, batch_size, use_gpu, device, criterion, cpu_device)
         val_losses.append(loss_val)
         val_accuracies.append(acc_val)
         val_FP.append(Fp_val)
@@ -167,7 +167,7 @@ def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, ch
             torch.save(val_FN, "PAF_Model_V1_val_FN")
             
             
-def Val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
+def val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
     model.eval()
     ts = time.time()
     rolling_loss = 0
@@ -258,7 +258,6 @@ if __name__ == "__main__":
 
     train_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='train'), batch_size=args.batch_size, shuffle=True, num_workers=4)
     val_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='val'), batch_size=args.batch_size, shuffle=False, num_workers=4)
-    test_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='test'), batch_size=args.batch_size, shuffle=False, num_workers=4)
 
     batch_size = 3
     train(batch_size, lr, num_epochs, weights, train_loader, val_loader, model)

@@ -1,20 +1,16 @@
-import numpy as np
-import torch
-import json
-import torch.optim as optim
-import torch.nn as nn
-import torch.nn.functional as F
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 import time
-import matplotlib.pyplot as plt
-import dataset
-import cv2
+import json
 import sys
-import losses
-import utils
-import visualize
 
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+
+from datasets.tusimple import TuSimple
 from models.dla.pose_dla_dcn import get_pose_net
 
 
@@ -82,8 +78,6 @@ def Test(batchSize, testLoader, criterion):
 
 if __name__ == "__main__":
     weights = torch.tensor([9.6])
-    #model = torch.load('parallel_model_earlyStop=loss')
-    #optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .005)
     use_gpu = torch.cuda.is_available()
     cpu_device = torch.device("cpu")
     #checking if GPU is available for use
@@ -94,7 +88,7 @@ if __name__ == "__main__":
     
     criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
     del weights
-    _, _, testLoader = Preprocessing()
+    test_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='test'), batch_size=args.batch_size, shuffle=False, num_workers=4)
     batch_size = 3
     torch.cuda.empty_cache()
     test_loss, test_acc, test_FN, test_FP = Test(batch_size, testLoader, criterion)
