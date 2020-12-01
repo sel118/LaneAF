@@ -28,7 +28,7 @@ cd DCNv2
 ## Dataset
 The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/issues/3) should be downloaded and organized as follows:
 ```plain
-└── data
+└── tusimple
     ├── clips
     |   └── .
     |   └── .
@@ -39,12 +39,18 @@ The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/iss
     ├── test_baseline.json
     └── test_label.json
 ```
+The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
+```shell
+source activate PAFDLA # activate virtual environment
+python prepare_data.py --dataset-root-path=/path/to/tusimple/
+source deactivate # exit virtual environment
+```
 
 ## Training
 PAFDLA models can be trained as follows:
 ```shell
 source activate PAFDLA # activate virtual environment
-python train.py --dataset-root-path=/path/to/train_set/
+python train.py --dataset-root-path=/path/to/tusimple/
 source deactivate # exit virtual environment
 ```
 Config files, logs, results and snapshots from running the above scripts will be stored in the `PAFDLA/experiments` folder by default.
@@ -53,6 +59,6 @@ Config files, logs, results and snapshots from running the above scripts will be
 Trained PAFDLA models can be run on the test set as follows:
 ```shell
 source activate PAFDLA # activate virtual environment
-python test.py --dataset-path=/path/to/test_set/ --snapshot=/path/to/trained/model/snapshot
+python test.py --dataset-path=/path/to/tusimple/ --snapshot=/path/to/trained/model/snapshot
 source deactivate # exit virtual environment
 ```
