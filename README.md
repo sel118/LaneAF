@@ -9,7 +9,7 @@ This repository contains the Pytorch code for training and testing all PAFDLA la
 ```shell
 conda create -n PAFDLA pip python=3.6
 source activate PAFDLA
-pip install numpy scipy matplotlib pillow tqdm kmeans-pytorch
+pip install numpy scipy matplotlib pillow tqdm kmeans-pytorch scikit-learn
 conda install -c menpo opencv
 pip install https://download.pytorch.org/whl/cu100/torch-1.3.1%2Bcu100-cp36-cp36m-linux_x86_64.whl
 pip install https://download.pytorch.org/whl/cu100/torchvision-0.4.2%2Bcu100-cp36-cp36m-linux_x86_64.whl
@@ -61,6 +61,6 @@ Config files, logs, results and snapshots from running the above scripts will be
 Trained PAFDLA models can be run on the test set as follows:
 ```shell
 source activate PAFDLA # activate virtual environment
-python test.py --dataset-path=/path/to/dataset/ --snapshot=/path/to/trained/model/snapshot
+python infer.py --dataset-path=/path/to/dataset/ --snapshot=/path/to/trained/model/snapshot
 source deactivate # exit virtual environment
 ```

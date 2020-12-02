@@ -31,8 +31,8 @@ class TuSimple(Dataset):
 
     def create_index(self):
         self.img_list = []
-        self.segLabel_list = []
-        self.AFLabel_list = []
+        self.seg_list = []
+        self.af_list = []
 
         listfile = os.path.join(self.data_dir_path, "seg_label", "list", "{}_gt.txt".format(self.image_set))
         if not os.path.exists(listfile):

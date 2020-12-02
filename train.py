@@ -1,263 +1,279 @@
+import os
 import json
-import time
-import sys
+from datetime import datetime
+from statistics import mean
+import argparse
 
 import numpy as np
-import matplotlib.pyplot as plt
-import cv2
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
+from sklearn.metrics import f1_score
 
 import torch
 import torch.optim as optim
-import torch.nn as nn
+from torch.autograd import Variable
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from datasets.tusimple import TuSimple
 from models.dla.pose_dla_dcn import get_pose_net
-from models.loss import VAFLoss, HAFLoss
-import utils
 
 
-def train(batch_size, lr, num_epochs, weights, trainLoader, valLoader, model, check_num = 5):
-    #counter = 0 
-    #initializing containers to store accuracy and loss every epoch
-    train_losses = []
-    accuracies = []
-    FP = []
-    FN = []
-    val_losses = []
-    val_accuracies = []
-    val_FP = []
-    val_FN = []
-    sigmoid = nn.Sigmoid()
-    use_gpu = torch.cuda.is_available()
-    cpu_device = torch.device("cpu")
-    #checking if GPU is available for use
-    if use_gpu:
-        device = torch.device("cuda:0")
-        model = model.to(device)
-        weights = weights.to(device)
+parser = argparse.ArgumentParser('Options for training lane detection models in PyTorch...')
+parser.add_argument('--dataset-dir', type=str, default=None, help='path to dataset')
+parser.add_argument('--output-dir', type=str, default=None, help='output directory for model and logs')
+parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')
+parser.add_argument('--batch-size', type=int, default=4, metavar='N', help='batch size for training')
+parser.add_argument('--epochs', type=int, default=50, metavar='N', help='number of epochs to train for')
+parser.add_argument('--learning-rate', type=float, default=1e-4, metavar='LR', help='learning rate')
+parser.add_argument('--weight-decay', type=float, default=0.0005, metavar='WD', help='weight decay')
+parser.add_argument('--bce-weight', type=float, default=9.6, help='BCE weight')
+parser.add_argument('--log-schedule', type=int, default=10, metavar='N', help='number of iterations to print/save log after')
+parser.add_argument('--seed', type=int, default=1, help='set seed to some constant value to reproduce experiments')
+parser.add_argument('--no-cuda', action='store_true', default=False, help='do not use cuda for training')
+parser.add_argument('--random-transforms', action='store_true', default=False, help='apply random transforms to input while training')
+
+
+args = parser.parse_args()
+# check args
+if args.dataset_dir is None:
+    assert False, 'Path to dataset not provided!'
+
+# setup args
+args.cuda = not args.no_cuda and torch.cuda.is_available()
+if args.output_dir is None:
+    args.output_dir = datetime.now().strftime("%Y-%m-%d-%H:%M")
+    args.output_dir = os.path.join('.', 'experiments', args.output_dir)
+
+if not os.path.exists(args.output_dir):
+    os.makedirs(args.output_dir)
+else:
+    assert False, 'Output directory already exists!'
+
+# store config in output directory
+with open(os.path.join(args.output_dir, 'config.json'), 'w') as f:
+    json.dump(vars(args), f)
+
+# BCE weight
+bce_weight = torch.tensor([args.bce_weight])
+if args.cuda:
+    bce_weight = bce_weight.cuda()
+
+# set random seed
+torch.manual_seed(args.seed)
+if args.cuda:
+    torch.cuda.manual_seed(args.seed)
+
+
+kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 6}
+train_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='train'), **kwargs)
+val_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='val'), **kwargs)
+
+# global var to store best validation F1 score across all epochs
+best_f1 = 0.0
+# create file handles
+f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
+
+
+# training function
+def train(net, epoch):
+    epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_f1 = list(), list(), list(), list(), list()
+    net.train()
+    for b_idx, sample in enumerate(val_loader):
+        if args.cuda:
+            sample['img'] = sample['img'].cuda()
+            sample['seg'] = sample['seg'].cuda()
+            sample['mask'] = sample['mask'].cuda()
+            sample['vaf'] = sample['vaf'].cuda()
+            sample['haf'] = sample['haf'].cuda()
+
+        # do the forward pass
+        outputs = net(sample['img'])[-1]
+
+        # calculate losses and metrics
+        loss_seg = F.binary_cross_entropy_with_logits(outputs['hm'], sample['mask'], weight=bce_weight)
+        loss_vaf = F.mse_loss(detector_ops['vaf'], sample['vaf'])
+        loss_haf = F.mse_loss(detector_ops['haf'], sample['haf'])
+        train_f1 = f1_score(outputs['hm'].detach().cpu().numpy().ravel(), sample['mask'].detach().cpu().numpy().ravel())
+
+        epoch_loss_seg.append(loss_seg.item())
+        epoch_loss_vaf.append(loss_vaf.item())
+        epoch_loss_haf.append(loss_haf.item())
+        loss = loss_seg + loss_vaf + loss_haf
+        epoch_loss.append(loss.item())
+        epoch_f1.append(train_f1)
+
+        loss.backward()
+        optimizer.step()
+
+        if b_idx % args.log_schedule == 0:
+            print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
+                100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item()))
+            with open(os.path.join(args.output_dir, "logs.txt"), "a") as f:
+                f.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\n'.format(
+                epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
+                100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item()))
+
+    # now that the epoch is completed calculate statistics and store logs
+    avg_loss_seg = mean(epoch_loss_seg)
+    avg_loss_vaf = mean(epoch_loss_vaf)
+    avg_loss_haf = mean(epoch_loss_haf)
+    avg_loss = mean(epoch_loss)
+    avg_f1 = mean(epoch_f1)
+    print("\n------------------------ Training metrics ------------------------")
+    f_log.write("\n------------------------ Training metrics ------------------------\n")
+    print("Average segmentation loss for epoch = {:.2f}".format(avg_loss_seg))
+    f_log.write("Average segmentation loss for epoch = {:.2f}\n".format(avg_loss_seg))
+    print("Average VAF loss for epoch = {:.2f}".format(avg_loss_vaf))
+    f_log.write("Average VAF loss for epoch = {:.2f}\n".format(avg_loss_vaf))
+    print("Average HAF loss for epoch = {:.2f}".format(avg_loss_haf))
+    f_log.write("Average HAF loss for epoch = {:.2f}\n".format(avg_loss_haf))
+    print("Average loss for epoch = {:.2f}".format(avg_loss))
+    f_log.write("Average loss for epoch = {:.2f}\n".format(avg_loss))
+    print("Average F1 score for epoch = {:.4f}\n".format(avg_f1))
+    f_log.write("Average F1 score for epoch = {:.4f}\n".format(avg_f1))
+    print("------------------------------------------------------------------\n")
+    f_log.write("------------------------------------------------------------------\n\n")
     
-    criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
-    optimizer = optim.Adam(model.parameters(), lr = lr, weight_decay = .003)
-    del weights
+    return net, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1
+
+
+# validation function
+def val(net, epoch):
+    global best_f1
+    epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_f1 = list(), list(), list(), list(), list()
+    net.eval()
     
-    for epoch in range(num_epochs):
-        if epoch == 3:
-            optimizer = optim.Adam(model.parameters(), lr = 5e-5, weight_decay = .003) 
-        elif epoch == 7:
-            optimizer = optim.Adam(model.parameters(), lr = 1e-6, weight_decay = .003) 
-        elif epoch == 11:
-            optimizer = optim.Adam(model.parameters(), lr = 5e-7, weight_decay = .003)
-        elif epoch == 16:
-            optimizer = optim.Adam(model.parameters(), lr = 1e-7, weight_decay = .003)
-            
-        ts = time.time()
-        #variables to sum loss and accuracy of each batch
-        rolling_loss = 0
-        rolling_acc = 0
-        rolling_FP = 0
-        rolling_FN = 0
-        for iter, sample in enumerate(trainLoader):
-            optimizer.zero_grad()
-            
-            #Add PAF variable to gpu or cpu, depending on if the gpu is available
-            if use_gpu:
-                inputs = sample['img'].to(device)# Move your inputs onto the gpu
-                labels = sample['mask'].to(device, dtype=torch.int)# Move your labels onto the gpu
-                segLabel = sample['seg'].to(device, dtype=torch.int)
-                vafLabel = sample['vaf'].to(device, dtype=torch.float32)
-                hafLabel = sample['haf'].to(device, dtype=torch.float32)
-             
-            # Unpack variables into inputs and labels
-            else:
-                inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['mask'], 
-                                                      sample['seg'], sample['vaf'], sample['haf']) 
+    for idx, sample in enumerate(val_loader):
+        if args.cuda:
+            sample['img'] = sample['img'].cuda()
+            sample['seg'] = sample['seg'].cuda()
+            sample['mask'] = sample['mask'].cuda()
+            sample['vaf'] = sample['vaf'].cuda()
+            sample['haf'] = sample['haf'].cuda()
 
-            #print(torch.unique(segLabel))
-            detector_ops = model(inputs)[-1]
-            outputs = detector_ops['hm']
-            #emb_outputs = detector_ops['emb']
-            vaf_outputs = detector_ops['vaf']
-            haf_outputs = detector_ops['haf']
-            vaf_outputs = vaf_outputs[0,:,:,:]
-            vaf_outputs = torch.reshape(vaf_outputs, (320,192,2))
-            haf_outputs = haf_outputs[0,:,:,:]
-            haf_outputs = torch.reshape(haf_outputs, (320,192))
-            del inputs
-            torch.cuda.empty_cache()
-            loss = criterion(outputs, labels.type_as(outputs))
-            outputs = sigmoid(outputs)
-            output_cpu = outputs.to(cpu_device).detach().numpy()
-            labels_cpu = labels.to(cpu_device).detach().numpy()
-            segLabel_cpu = segLabel.to(cpu_device).detach().numpy()
-            del outputs
-            Acc, false_neg, false_pos = utils.Accuracy(output_cpu, labels_cpu)
-            '''comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
-            if use_gpu:
-                comp_matrix = comp_matrix.to(device)
-                
-            mean = utils.MeanValue(emb_outputs, comp_matrix)
-            var_loss = VarLoss(emb_outputs, comp_matrix, mean)
-            dist_loss = Distloss(mean)'''
-            
-            #add variable name for input PAFs
-            vaf_l2_loss = VAFLoss(vaf_outputs, vafLabel)
-            haf_l2_loss = HAFLoss(haf_outputs, hafLabel)
-            
-            rolling_acc += Acc
-            #loss += var_loss + dist_loss
-            loss += vaf_l2_loss + haf_l2_loss
-            
-            rolling_FP += false_pos
-            rolling_FN += false_neg
-            
-            #del labels, emb_outputs, comp_matrix, mean, var_loss, dist_loss
-            
-            del labels, segLabel, vafLabel, hafLabel, vaf_outputs, haf_outputs, vaf_l2_loss, haf_l2_loss
-            torch.cuda.empty_cache()
-            loss.backward()
-            optimizer.step()
+        # do the forward pass
+        outputs = net(sample['img'])[-1]
 
-            if iter % 10 == 0:
-                print("epoch{}, iter{}, loss: {}, acc: {}, FP: {}, FN: {}".format(epoch, iter, loss.item(), Acc, false_pos, false_neg))
+        # calculate losses and metrics
+        loss_seg = F.binary_cross_entropy_with_logits(outputs['hm'], sample['mask'], weight=bce_weight)
+        loss_vaf = F.mse_loss(detector_ops['vaf'], sample['vaf'])
+        loss_haf = F.mse_loss(detector_ops['haf'], sample['haf'])
+        val_f1 = f1_score(outputs['hm'].detach().cpu().numpy().ravel(), sample['mask'].detach().cpu().numpy().ravel())
 
-            rolling_loss += loss.item()
-            del loss
-            torch.cuda.empty_cache()
+        epoch_loss_seg.append(loss_seg.item())
+        epoch_loss_vaf.append(loss_vaf.item())
+        epoch_loss_haf.append(loss_haf.item())
+        loss = loss_seg + loss_vaf + loss_haf
+        epoch_loss.append(loss.item())
+        epoch_f1.append(val_f1)
 
-        print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
-        Normalizing_Factor = len(trainLoader) * batch_size
-        train_losses.append(rolling_loss / Normalizing_Factor)
-        accuracies.append(rolling_acc / Normalizing_Factor)
-        FP.append(rolling_FP / Normalizing_Factor)
-        FN.append(rolling_FN / Normalizing_Factor)
-        loss_val, acc_val, Fn_val, Fp_val = val(epoch, valLoader, batch_size, use_gpu, device, criterion, cpu_device)
-        val_losses.append(loss_val)
-        val_accuracies.append(acc_val)
-        val_FP.append(Fp_val)
-        val_FN.append(Fn_val)
-        model.train()
-        #Checking if current model is better than the previous best model
-        if epoch == 0:
-            torch.save(model, 'PAF_Model_V1_Best')
-        else:
-            if torch.argmin(torch.Tensor(val_losses)) == epoch:
-                print("current-model saved as best model")
-                torch.save(model, 'PAF_Model_V1_Best')
-                
-        #Early Stopping Not implemented (uncomment if needed)
-        '''if counter == check_num:
-            print("early stop achieved")
-            torch.save(losses, "parallel_model_earlyStop=loss_rev2_train_loss")
-            torch.save(accuracies, "parallel_model_earlyStop=loss_rev2_train_acc")
-            torch.save(val_losses, "parallel_model_earlyStop=loss_rev2_val_loss")
-            torch.save(val_accuracies, "parallel_model_earlyStop=loss_rev2_val_acc")
-            break'''
-        
-        if epoch == (num_epochs - 1):
-            print("training is finished")
-            #torch.save(model, 'parallel_model')
-            torch.save(train_losses, "PAF_Model_V1_train_loss")
-            torch.save(accuracies, "PAF_Model_V1_train_acc")
-            torch.save(FP, "PAF_Model_V1_train_FP")
-            torch.save(FN, "PAF_Model_V1_train_FN")
-            torch.save(val_losses, "PAF_Model_V1_val_loss")
-            torch.save(val_accuracies, "PAF_Model_V1_val_acc")
-            torch.save(val_FP, "PAF_Model_V1_val_FP")
-            torch.save(val_FN, "PAF_Model_V1_val_FN")
-            
-            
-def val(epoch, ValLoader, batchSize, use_gpu, device, criterion, cpu_device):
-    model.eval()
-    ts = time.time()
-    rolling_loss = 0
-    rolling_acc = 0
-    rolling_FP = 0
-    rolling_FN = 0
-    sigmoid = nn.Sigmoid()
-    
-    for iter, sample in enumerate(ValLoader):
-        
-        #Add PAF variable to gpu or cpu, depending on if the gpu is available
-        if use_gpu:
-            inputs = sample['img'].to(device)# Move your inputs onto the gpu
-            labels = sample['mask'].to(device,dtype=torch.int)# Move your labels onto the gpu
-            segLabel = sample['seg'].to(device,dtype=torch.int)
-            vafLabel = sample['vaf'].to(device, dtype=torch.float32)
-            hafLabel = sample['haf'].to(device, dtype=torch.float32)
-             
-            # Unpack variables into inputs and labels
-        else:
-            inputs, labels, segLabel, vafLabel, hafLabel = (sample['img'], sample['mask'], 
-                                                  sample['seg'], sample['vaf'], sample['haf']) 
-            
-        detector_ops = model(inputs)[-1]
-        outputs = detector_ops['hm']
-        #emb_outputs = detector_ops['emb']
-        vaf_outputs = detector_ops['vaf']
-        haf_outputs = detector_ops['haf']
-        vaf_outputs = vaf_outputs[0,:,:,:]
-        vaf_outputs = torch.reshape(vaf_outputs, (320,192,2))
-        haf_outputs = haf_outputs[0,:,:,:]
-        haf_outputs = torch.reshape(haf_outputs, (320,192))
-        del inputs
-        torch.cuda.empty_cache()
-        loss = criterion(outputs, labels.type_as(outputs))
-        outputs = sigmoid(outputs)
-        output_cpu = outputs.to(cpu_device).detach().numpy()
-        labels_cpu = labels.to(cpu_device).detach().numpy()
-        segLabel_cpu = segLabel.to(cpu_device).detach().numpy()
-        del outputs
-        Acc, false_neg, false_pos = utils.Accuracy(output_cpu, labels_cpu)
-        '''comp_matrix = torch.from_numpy(utils.Comparison(output_cpu, segLabel_cpu))
-        if use_gpu:
-            comp_matrix = comp_matrix.to(device)
+        print('Done with image {} out of {}...'.format(min(args.batch_size*(idx+1), len(val_loader.dataset)), len(val_loader.dataset)))
 
-        mean = utils.MeanValue(emb_outputs, comp_matrix)
-        var_loss = losses.VarLoss(emb_outputs, comp_matrix, mean)
-        dist_loss = losses.Distloss(mean)'''
+    # now that the epoch is completed calculate statistics and store logs
+    avg_loss_seg = mean(epoch_loss_seg)
+    avg_loss_vaf = mean(epoch_loss_vaf)
+    avg_loss_haf = mean(epoch_loss_haf)
+    avg_loss = mean(epoch_loss)
+    avg_f1 = mean(epoch_f1)
+    print("\n------------------------ Validation metrics ------------------------")
+    f_log.write("\n------------------------ Validation metrics ------------------------\n")
+    print("Average segmentation loss for epoch = {:.2f}".format(avg_loss_seg))
+    f_log.write("Average segmentation loss for epoch = {:.2f}\n".format(avg_loss_seg))
+    print("Average VAF loss for epoch = {:.2f}".format(avg_loss_vaf))
+    f_log.write("Average VAF loss for epoch = {:.2f}\n".format(avg_loss_vaf))
+    print("Average HAF loss for epoch = {:.2f}".format(avg_loss_haf))
+    f_log.write("Average HAF loss for epoch = {:.2f}\n".format(avg_loss_haf))
+    print("Average loss for epoch = {:.2f}".format(avg_loss))
+    f_log.write("Average loss for epoch = {:.2f}\n".format(avg_loss))
+    print("Average F1 score for epoch = {:.4f}\n".format(avg_f1))
+    f_log.write("Average F1 score for epoch = {:.4f}\n".format(avg_f1))
+    print("--------------------------------------------------------------------\n")
+    f_log.write("--------------------------------------------------------------------\n\n")
 
-        #add variable name for input PAFs
-        vaf_l2_loss = losses.VAFLoss(vaf_outputs, vafLabel)
-        haf_l2_loss = losses.HAFLoss(haf_outputs, hafLabel)
+    # now save the model if it has a better F1 score than the best model seen so forward
+    if avg_f1 > best_f1:
+        # save the model
+        torch.save(model.state_dict(), os.path.join(args.output_dir, 'net_' + '%.4d' % (epoch,) + '.pth'))
+        best_f1 = avg_f1
 
-        rolling_acc += Acc
-        #loss += var_loss + dist_loss
-        loss += vaf_l2_loss + haf_l2_loss
-
-        rolling_FP += false_pos
-        rolling_FN += false_neg
-
-        #del labels, emb_outputs, comp_matrix, mean, var_loss, dist_loss
-
-        del labels, segLabel, vafLabel, hafLabel, vaf_outputs, haf_outputs, vaf_l2_loss, haf_l2_loss
-
-        if iter% 10 == 0:
-            print("epoch{}, iter{}, loss: {}, acc: {}, FP: {}, FN: {}".format(epoch, iter, loss.item(), Acc, false_pos, false_neg))
-        
-        rolling_loss += loss.item()
-        del loss
-        torch.cuda.empty_cache()
-
-    print("Finish epoch {}, time elapsed {}".format(epoch, time.time() - ts))
-    Normalizing_Factor = len(ValLoader) * batchSize
-    rolling_acc /= Normalizing_Factor
-    rolling_loss /= Normalizing_Factor
-    rolling_FP /= Normalizing_Factor
-    rolling_FN /= Normalizing_Factor
-    return rolling_loss, rolling_acc, rolling_FN, rolling_FP
+    return avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1
             
 if __name__ == "__main__":
-    #defining initial parameters and model
-    lr = 1e-4 
-    num_epochs = 30
-    weights = torch.tensor([9.6])
-    #heads = {'hm': 1, 'emb': 4}
     heads = {'hm': 1, 'vaf': 2, 'haf': 1}
     model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
 
-    train_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='train'), batch_size=args.batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='val'), batch_size=args.batch_size, shuffle=False, num_workers=4)
+    if args.snapshot is not None:
+        model.load_state_dict(torch.load(args.snapshot), strict=True)
+    if args.cuda:
+        model.cuda()
+    print(model)
 
-    batch_size = 3
-    train(batch_size, lr, num_epochs, weights, train_loader, val_loader, model)
+    # optimizer
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+
+    # set up figures and axes
+    fig1, ax1 = plt.subplots()
+    plt.grid(True)
+    ax1.plot([], 'r', label='Training segmentation loss')
+    ax1.plot([], 'g', label='Training VAF loss')
+    ax1.plot([], 'b', label='Training HAF loss')
+    ax1.plot([], 'k', label='Training total loss')
+    ax1.legend()
+    train_loss_seg, train_loss_vaf, train_loss_haf, train_loss = list(), list(), list(), list()
+
+    fig2, ax2 = plt.subplots()
+    plt.grid(True)
+    ax2.plot([], 'r', label='Validation segmentation loss')
+    ax2.plot([], 'g', label='Validation VAF loss')
+    ax2.plot([], 'b', label='Validation HAF loss')
+    ax2.plot([], 'k', label='Validation total loss')
+    ax2.legend()
+    val_loss_seg, val_loss_vaf, val_loss_haf, val_loss = list(), list(), list(), list()
+
+    fig3, ax3 = plt.subplots()
+    plt.grid(True)
+    ax3.plot([], 'g', label='Training F1 score')
+    ax3.plot([], 'b', label='Validation F1 score')
+    ax3.legend()
+    train_f1, val_f1 = list(), list()
+
+    # trainval loop
+    for i in range(1, args.epochs + 1):
+        # training epoch
+        model, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1 = train(model, i)
+        train_loss_seg.append(avg_loss_seg)
+        train_loss_vaf.append(avg_loss_vaf)
+        train_loss_haf.append(avg_loss_haf)
+        train_loss.append(avg_loss)
+        train_f1.append(avg_f1)
+        # plot training loss
+        ax1.plot(train_loss_seg, 'r', label='Training segmentation loss')
+        ax1.plot(train_loss_vaf, 'g', label='Training VAF loss')
+        ax1.plot(train_loss_haf, 'b', label='Training HAF loss')
+        ax1.plot(train_loss, 'k', label='Training total loss')
+        fig1.savefig(os.path.join(args.output_dir, "train_loss.jpg"))
+
+        # validation epoch
+        avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1 = val(model)
+        val_loss_seg.append(avg_loss_seg)
+        val_loss_vaf.append(avg_loss_vaf)
+        val_loss_haf.append(avg_loss_haf)
+        val_loss.append(avg_loss)
+        val_f1.append(avg_f1)
+        # plot validation loss
+        ax2.plot(val_loss_seg, 'r', label='Validation segmentation loss')
+        ax2.plot(val_loss_vaf, 'g', label='Validation VAF loss')
+        ax2.plot(val_loss_haf, 'b', label='Validation HAF loss')
+        ax2.plot(val_loss, 'k', label='Validation total loss')
+        fig2.savefig(os.path.join(args.output_dir, "val_loss.jpg"))
+
+        # plot the train and val F1 scores
+        ax3.plot(train_f1, 'g', label='Train F1 score')
+        ax3.plot(val_f1, 'b', label='Validation F1 score')
+        fig3.savefig(os.path.join(args.output_dir, 'trainval_f1.jpg'))
+
+    plt.close('all')
+    f_log.close()
