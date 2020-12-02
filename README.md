@@ -44,7 +44,7 @@ The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/iss
 The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
 ```shell
 source activate PAFDLA # activate virtual environment
-python datasets/tusimple.py --dataset-root-path=/path/to/tusimple/
+python datasets/tusimple.py --dataset-dir=/path/to/tusimple/
 source deactivate # exit virtual environment
 ```
 
@@ -52,7 +52,7 @@ source deactivate # exit virtual environment
 PAFDLA models can be trained as follows:
 ```shell
 source activate PAFDLA # activate virtual environment
-python train.py --dataset-root-path=/path/to/dataset/
+python train.py --dataset-dir=/path/to/dataset/
 source deactivate # exit virtual environment
 ```
 Config files, logs, results and snapshots from running the above scripts will be stored in the `PAFDLA/experiments` folder by default.
@@ -61,6 +61,6 @@ Config files, logs, results and snapshots from running the above scripts will be
 Trained PAFDLA models can be run on the test set as follows:
 ```shell
 source activate PAFDLA # activate virtual environment
-python infer.py --dataset-path=/path/to/dataset/ --snapshot=/path/to/trained/model/snapshot
+python infer.py --dataset-dir=/path/to/dataset/ --snapshot=/path/to/trained/model/snapshot
 source deactivate # exit virtual environment
 ```

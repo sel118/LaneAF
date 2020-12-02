@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
-import affinity_fields as af
+from datasets import affinity_fields as af
 
 
 class TuSimple(Dataset):
