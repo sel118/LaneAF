@@ -80,7 +80,7 @@ f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 def train(net, epoch):
     epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_f1 = list(), list(), list(), list(), list()
     net.train()
-    for b_idx, sample in enumerate(val_loader):
+    for b_idx, sample in enumerate(train_loader):
         if args.cuda:
             sample['img'] = sample['img'].cuda()
             sample['seg'] = sample['seg'].cuda()
@@ -261,7 +261,7 @@ if __name__ == "__main__":
         fig1.savefig(os.path.join(args.output_dir, "train_loss.jpg"))
 
         # validation epoch
-        avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1 = val(model)
+        avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1 = val(model, i)
         val_loss_seg.append(avg_loss_seg)
         val_loss_vaf.append(avg_loss_vaf)
         val_loss_haf.append(avg_loss_haf)
