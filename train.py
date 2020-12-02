@@ -32,7 +32,7 @@ parser.add_argument('--bce-weight', type=float, default=9.6, help='BCE weight')
 parser.add_argument('--log-schedule', type=int, default=10, metavar='N', help='number of iterations to print/save log after')
 parser.add_argument('--seed', type=int, default=1, help='set seed to some constant value to reproduce experiments')
 parser.add_argument('--no-cuda', action='store_true', default=False, help='do not use cuda for training')
-parser.add_argument('--random-transforms', action='store_true', default=False, help='apply random transforms to input while training')
+parser.add_argument('--random-transforms', action='store_true', default=False, help='apply random transforms to input during training')
 
 
 args = parser.parse_args()
@@ -67,8 +67,8 @@ if args.cuda:
 
 
 kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 6}
-train_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='train'), **kwargs)
-val_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='val'), **kwargs)
+train_loader = DataLoader(TuSimple(args.dataset_dir, 'train', args.random_transforms), **kwargs)
+val_loader = DataLoader(TuSimple(args.dataset_dir, 'val', args.random_transforms), **kwargs)
 
 # global var to store best validation F1 score across all epochs
 best_f1 = 0.0

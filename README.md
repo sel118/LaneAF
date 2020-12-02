@@ -52,7 +52,7 @@ source deactivate # exit virtual environment
 PAFDLA models can be trained as follows:
 ```shell
 source activate PAFDLA # activate virtual environment
-python train.py --dataset-dir=/path/to/dataset/
+python train.py --dataset-dir=/path/to/dataset/ --random-transforms
 source deactivate # exit virtual environment
 ```
 Config files, logs, results and snapshots from running the above scripts will be stored in the `PAFDLA/experiments` folder by default.

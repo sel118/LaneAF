@@ -17,15 +17,25 @@ import affinity_fields as af
 
 
 class TuSimple(Dataset):
-    def __init__(self, path, image_set):
+    def __init__(self, path, image_set='train', random_transforms=False):
         super(TuSimple, self).__init__()
         assert image_set in ('train', 'val', 'test'), "image_set is not valid!"
         self.input_size = (768, 1280)
         self.output_size = (192, 320)
         self.data_dir_path = path
         self.image_set = image_set
-        self.img_transforms = transforms.Compose([transforms.Resize(self.input_size), 
-            transforms.ToTensor(), transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+        # normalization transform for input images
+        self.normalize = transforms.Compose([transforms.ToTensor(), 
+            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+        # random transformations + resizing for inputs
+        if random_transforms:
+            self.transform = transforms.Compose([transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation((-10, 10)), 
+                transforms.RandomResizedCrop(self.input_size, scale=(0.7, 1.0))])
+        else:
+            self.transform = transforms.Resize(self.input_size)
+        # resizing for outputs
+        self.resize = transforms.Resize(self.output_size)
 
         self.create_index()
 
@@ -48,20 +58,25 @@ class TuSimple(Dataset):
 
     def __getitem__(self, idx):
         img = cv2.imread(self.img_list[idx])
-        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)) # PIL uses RGB format
+        seg = cv2.imread(self.seg_list[idx])
+        af = np.load(self.af_list[idx])
 
-        seg = cv2.resize(cv2.imread(self.seg_list[idx]), (self.output_size[1], self.output_size[0]))[:, :, 0:1]
-        af = cv2.resize(np.load(self.af_list[idx]), (self.output_size[1], self.output_size[0]))
+        # convert all outputs to float32 tensors of shape [C, H, W]
         sample = {'img': img,
                   'img_name': self.img_list[idx],
-                  'seg': np.transpose(seg.astype(np.float32), (2, 0, 1)),
+                  'seg': np.transpose(seg[:, :, 0:1].astype(np.float32), (2, 0, 1)),
+                  'mask': (np.transpose(seg[:, :, 0:1], (2, 0, 1)) >= 1).astype(np.float32), 
                   'vaf': np.transpose(af[:, :, :2].astype(np.float32), (2, 0, 1)),
                   'haf': np.transpose(af[:, :, 2:3].astype(np.float32), (2, 0, 1))}
 
-        if self.img_transforms is not None:
-            sample['img'] = self.img_transforms(sample['img'])
-            
-        sample['mask'] = (sample['seg'] >= 1).astype(np.float32)
+        # apply normalization, transofrmations, and resizing to inputs and outputs
+        sample['img'] = self.transform(self.normalize(sample['img']))
+        sample['seg'] = self.resize(self.transform(sample['seg']))
+        sample['mask'] = self.resize(self.transform(sample['mask']))
+        sample['vaf'] = self.resize(self.transform(sample['vaf']))
+        sample['haf'] = self.resize(self.transform(sample['haf']))
+
         return sample
 
     def __len__(self):
