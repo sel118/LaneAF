@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
-import affinity_fields as af
+import datasets.affinity_fields as af
 
 
 class TuSimple(Dataset):
@@ -50,18 +50,18 @@ class TuSimple(Dataset):
         img = cv2.imread(self.img_list[idx])
         img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
-        seg = cv2.resize(cv2.imread(self.seg_list[idx]), (self.output_size[1], self.output_size[0]))[:, :, 0]
+        seg = cv2.resize(cv2.imread(self.seg_list[idx]), (self.output_size[1], self.output_size[0]))[:, :, 0:1]
         af = cv2.resize(np.load(self.af_list[idx]), (self.output_size[1], self.output_size[0]))
         sample = {'img': img,
                   'img_name': self.img_list[idx],
-                  'seg': seg,
-                  'vaf': af[:, :, :2],
-                  'haf': af[:, :, 2]}
+                  'seg': np.transpose(seg.astype(np.float32), (2, 0, 1)),
+                  'vaf': np.transpose(af[:, :, :2].astype(np.float32), (2, 0, 1)),
+                  'haf': np.transpose(af[:, :, 2:3].astype(np.float32), (2, 0, 1))}
 
         if self.img_transforms is not None:
             sample['img'] = self.img_transforms(sample['img'])
             
-        sample['mask'] = (sample['seg'] >= 1).astype(np.uint8)
+        sample['mask'] = (sample['seg'] >= 1).astype(np.float32)
         return sample
 
     def __len__(self):

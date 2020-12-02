@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser('Options for training lane detection models in 
 parser.add_argument('--dataset-dir', type=str, default=None, help='path to dataset')
 parser.add_argument('--output-dir', type=str, default=None, help='output directory for model and logs')
 parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')
-parser.add_argument('--batch-size', type=int, default=4, metavar='N', help='batch size for training')
+parser.add_argument('--batch-size', type=int, default=2, metavar='N', help='batch size for training')
 parser.add_argument('--epochs', type=int, default=50, metavar='N', help='number of epochs to train for')
 parser.add_argument('--learning-rate', type=float, default=1e-4, metavar='LR', help='learning rate')
 parser.add_argument('--weight-decay', type=float, default=0.0005, metavar='WD', help='weight decay')
@@ -93,9 +93,11 @@ def train(net, epoch):
 
         # calculate losses and metrics
         loss_seg = F.binary_cross_entropy_with_logits(outputs['hm'], sample['mask'], weight=bce_weight)
-        loss_vaf = F.mse_loss(detector_ops['vaf'], sample['vaf'])
-        loss_haf = F.mse_loss(detector_ops['haf'], sample['haf'])
-        train_f1 = f1_score(outputs['hm'].detach().cpu().numpy().ravel(), sample['mask'].detach().cpu().numpy().ravel())
+        loss_vaf = F.mse_loss(outputs['vaf'], sample['vaf'])
+        loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
+        pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
+        target = sample['mask'].detach().cpu().numpy().ravel()
+        train_f1 = f1_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
 
         epoch_loss_seg.append(loss_seg.item())
         epoch_loss_vaf.append(loss_vaf.item())
@@ -159,9 +161,11 @@ def val(net, epoch):
 
         # calculate losses and metrics
         loss_seg = F.binary_cross_entropy_with_logits(outputs['hm'], sample['mask'], weight=bce_weight)
-        loss_vaf = F.mse_loss(detector_ops['vaf'], sample['vaf'])
-        loss_haf = F.mse_loss(detector_ops['haf'], sample['haf'])
-        val_f1 = f1_score(outputs['hm'].detach().cpu().numpy().ravel(), sample['mask'].detach().cpu().numpy().ravel())
+        loss_vaf = F.mse_loss(outputs['vaf'], sample['vaf'])
+        loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
+        pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
+        target = sample['mask'].detach().cpu().numpy().ravel()
+        val_f1 = f1_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
 
         epoch_loss_seg.append(loss_seg.item())
         epoch_loss_vaf.append(loss_vaf.item())
