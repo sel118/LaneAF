@@ -24,9 +24,10 @@ class TuSimple(Dataset):
         self.output_size = (192, 320)
         self.data_dir_path = path
         self.image_set = image_set
+        # convert numpy array (H, W, C), uint8 --> torch tensor (C, H, W), float32
+        self.to_tensor = transforms.ToTensor()
         # normalization transform for input images
-        self.normalize = transforms.Compose([transforms.ToTensor(), 
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))])
+        self.normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         # random transformations + resizing for inputs
         if random_transforms:
             self.transform = transforms.Compose([transforms.RandomHorizontalFlip(),
@@ -57,21 +58,20 @@ class TuSimple(Dataset):
                 self.af_list.append(os.path.join(self.data_dir_path, l[1][1:-3] + 'npy'))
 
     def __getitem__(self, idx):
-        img = cv2.imread(self.img_list[idx])
-        img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)) # PIL uses RGB format
-        seg = cv2.imread(self.seg_list[idx])
-        af = np.load(self.af_list[idx])
+        img = cv2.cvtColor(cv2.imread(self.img_list[idx]), cv2.COLOR_BGR2RGB) # (H, W, 3)
+        seg = cv2.imread(self.seg_list[idx]) # (H, W, 3)
+        af = np.load(self.af_list[idx]) # (H, W, 3)
 
-        # convert all outputs to float32 tensors of shape [C, H, W]
-        sample = {'img': img,
+        # convert all outputs to float32 tensors of shape (C, H, W) in range [0, 1]
+        sample = {'img': self.to_tensor(img), # (3, H, W)
                   'img_name': self.img_list[idx],
-                  'seg': np.transpose(seg[:, :, 0:1].astype(np.float32), (2, 0, 1)),
-                  'mask': (np.transpose(seg[:, :, 0:1], (2, 0, 1)) >= 1).astype(np.float32), 
-                  'vaf': np.transpose(af[:, :, :2].astype(np.float32), (2, 0, 1)),
-                  'haf': np.transpose(af[:, :, 2:3].astype(np.float32), (2, 0, 1))}
+                  'seg': self.to_tensor(seg[:, :, 0:1].astype(np.float32)), # (1, H, W)
+                  'mask': self.to_tensor((seg[:, :, 0:1] >= 1).astype(np.float32)),  # (1, H, W)
+                  'vaf': self.to_tensor(af[:, :, :2].astype(np.float32)), # (2, H, W)
+                  'haf': self.to_tensor(af[:, :, 2:3].astype(np.float32))} # (1, H, W)
 
-        # apply normalization, transofrmations, and resizing to inputs and outputs
-        sample['img'] = self.transform(self.normalize(sample['img']))
+        # apply normalization, transformations, and resizing to inputs and outputs
+        sample['img'] = self.normalize(self.transform(sample['img']))
         sample['seg'] = self.resize(self.transform(sample['seg']))
         sample['mask'] = self.resize(self.transform(sample['mask']))
         sample['vaf'] = self.resize(self.transform(sample['vaf']))
