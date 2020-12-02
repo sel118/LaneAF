@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
-from datasets import affinity_fields as af
+import affinity_fields as af
 
 
 class TuSimple(Dataset):
@@ -173,14 +173,10 @@ def _gen_label_for_json(data_dir_path, image_set):
             cv2.imwrite(seg_path, seg_img)
 
             seg_path = "/".join([save_dir, *img_path.split("/")[1:3], img_name[:-3]+"png"])
-            paf_path = "/".join([save_dir, *img_path.split("/")[1:3], img_name[:-3]+"npy"])
-            if paf_path[0] != '/':
-                paf_path = '/' + paf_path
             if seg_path[0] != '/':
                 seg_path = '/' + seg_path
             if img_path[0] != '/':
                 img_path = '/' + img_path
-            list_str.insert(0, paf_path)
             list_str.insert(0, seg_path)
             list_str.insert(0, img_path)
             list_str = " ".join(list_str) + "\n"
