@@ -11,16 +11,15 @@ conda create -n PAFDLA pip python=3.6
 source activate PAFDLA
 pip install numpy scipy matplotlib pillow tqdm kmeans-pytorch scikit-learn
 conda install -c menpo opencv
-pip install https://download.pytorch.org/whl/cu100/torch-1.3.1%2Bcu100-cp36-cp36m-linux_x86_64.whl
-pip install https://download.pytorch.org/whl/cu100/torchvision-0.4.2%2Bcu100-cp36-cp36m-linux_x86_64.whl
+pip install torch==1.7.0+cu101 torchvision==0.8.1+cu101 torchaudio==0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
 source deactivate
 ```
-You can alternately find your desired PyTorch wheel from [here](https://download.pytorch.org/whl/torch_stable.html).
+You can alternately find your desired PyTorch wheel from [here](https://download.pytorch.org/whl/torch_stable.html). Note that this repository requires at least `torch` >= 1.6.0 and `torchvision` >= 0.8.0.
 
 4) Clone and make DCNv2:
 ```shell
 cd models/dla
-git clone https://github.com/CharlesShang/DCNv2
+git clone https://github.com/lbin/DCNv2.git
 cd DCNv2
 ./make.sh
 ```
