@@ -1,98 +1,110 @@
-import time
+import os
 import json
-import sys
+from datetime import datetime
+from statistics import mean
+import argparse
 
 import numpy as np
-import matplotlib.pyplot as plt
-import cv2
+from sklearn.metrics import accuracy_score, f1_score
 
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from datasets.tusimple import TuSimple
 from models.dla.pose_dla_dcn import get_pose_net
 
 
-def Test(batchSize, testLoader, criterion):
-    model = torch.load('parallel_model_final')
-    model.eval()
-    ts = time.time()
-    rolling_loss = 0
-    rolling_acc = 0
-    rolling_FP = 0
-    rolling_FN = 0
-    sigmoid = nn.Sigmoid()
-    test_losses = []
-    test_accuracies = []
-    test_FP = []
-    test_FN = []
-    for iter, sample in enumerate(testLoader):
-        if use_gpu:
-            inputs = sample['img'].to(device)# Move your inputs onto the gpu
-            labels = sample['binary_mask'].to(device,dtype=torch.int)# Move your labels onto the gpu
-            segLabel = sample['segLabel'].to(device,dtype=torch.int)
-            
-        else:
-            inputs, labels, segLabel = (sample['img'], sample['binary_mask'], sample['segLabel'])# Unpack variables into inputs and labels
-            
-        detector_ops = model(inputs)[-1]
-        outputs = detector_ops['hm']
-        embed = detector_ops['emb']
-        #print(outputs.shape)
-        del inputs
-        torch.cuda.empty_cache()
-        loss = criterion(outputs, labels.type_as(outputs))
-        outputs = sigmoid(outputs)
-        output_cpu = outputs.to(cpu_device).detach().numpy()
-        labels_cpu = labels.to(cpu_device).detach().numpy()
-        segLabel_cpu = segLabel.to(cpu_device).detach().numpy()
-        del outputs
-        Acc, false_neg, false_pos = Accuracy(output_cpu, labels_cpu)
-        mask = Comparison(output_cpu, segLabel_cpu)
-        comp_matrix = torch.from_numpy(mask)
-        comp_matrix = comp_matrix.to(device)
-        mean = MeanValue(embed, comp_matrix)
-        var_loss = VarLoss(embed, comp_matrix, mean)
-        dist_loss = Distloss(mean)
-        rolling_acc += Acc
-        rolling_FP += false_pos
-        rolling_FN += false_neg
-        loss += var_loss + dist_loss
-        del labels,embed, comp_matrix, mean, var_loss, dist_loss
+parser = argparse.ArgumentParser('Options for inference with lane detection models in PyTorch...')
+parser.add_argument('--dataset-dir', type=str, default=None, help='path to dataset')
+parser.add_argument('--output-dir', type=str, default=None, help='output directory for model and logs')
+parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')
+parser.add_argument('--batch-size', type=int, default=2, metavar='N', help='batch size for training')
+parser.add_argument('--seed', type=int, default=1, help='set seed to some constant value to reproduce experiments')
+parser.add_argument('--no-cuda', action='store_true', default=False, help='do not use cuda for training')
 
-        if iter% 10 == 0:
-            print("iter{}, loss: {}, acc: {}, FP: {}, FN: {}".format(iter, loss.item(), Acc, false_pos, false_neg))
-        
-        rolling_loss += loss.item()
-        del loss
-        torch.cuda.empty_cache()
 
-    print("time elapsed {}".format(time.time() - ts))
-    Normalizing_Factor = len(testLoader) * batch_size
-    rolling_acc /= Normalizing_Factor
-    rolling_loss /= Normalizing_Factor
-    rolling_FP /= Normalizing_Factor
-    rolling_FN /= Normalizing_Factor
-    return rolling_loss, rolling_acc, rolling_FN, rolling_FP
+args = parser.parse_args()
+# check args
+if args.dataset_dir is None:
+    assert False, 'Path to dataset not provided!'
+if args.snapshot is None:
+    assert False, 'Model snapshot not provided!'
 
-if __name__ == "__main__":
-    weights = torch.tensor([9.6])
-    use_gpu = torch.cuda.is_available()
-    cpu_device = torch.device("cpu")
-    #checking if GPU is available for use
-    if use_gpu:
-        device = torch.device("cuda:0")
-        model = model.to(device)
-        weights = weights.to(device)
+# setup args
+args.cuda = not args.no_cuda and torch.cuda.is_available()
+if args.output_dir is None:
+    args.output_dir = datetime.now().strftime("%Y-%m-%d-%H:%M")
+    args.output_dir = os.path.join('.', 'experiments', args.output_dir)
+
+if not os.path.exists(args.output_dir):
+    os.makedirs(args.output_dir)
+else:
+    assert False, 'Output directory already exists!'
+
+# store config in output directory
+with open(os.path.join(args.output_dir, 'config.json'), 'w') as f:
+    json.dump(vars(args), f)
+
+# set random seed
+torch.manual_seed(args.seed)
+if args.cuda:
+    torch.cuda.manual_seed(args.seed)
+
+
+kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 6}
+test_loader = DataLoader(TuSimple(args.dataset_dir, 'test', False), **kwargs)
+
+# create file handles
+f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
+
+
+# validation function
+def test(net):
+    epoch_acc, epoch_f1 = list(), list()
+    net.eval()
     
-    criterion = nn.BCEWithLogitsLoss(pos_weight=weights)
-    del weights
-    test_loader = DataLoader(TuSimple(path=args.dataset_dir, image_set='test'), batch_size=args.batch_size, shuffle=False, num_workers=4)
-    batch_size = 3
-    torch.cuda.empty_cache()
-    test_loss, test_acc, test_FN, test_FP = Test(batch_size, testLoader, criterion)
-    print("test_loss: ", test_loss)
-    print("test_acc: ", test_acc * 3)
-    print("test_FN: ", test_FN * 3)
-    print("test_FP", test_FP * 3)
+    for idx, sample in enumerate(test_loader):
+        if args.cuda:
+            sample['img'] = sample['img'].cuda()
+            sample['seg'] = sample['seg'].cuda()
+            sample['mask'] = sample['mask'].cuda()
+            sample['vaf'] = sample['vaf'].cuda()
+            sample['haf'] = sample['haf'].cuda()
+
+        # do the forward pass
+        outputs = net(sample['img'])[-1]
+
+        pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
+        target = sample['mask'].detach().cpu().numpy().ravel()
+        test_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
+        test_f1 = f1_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
+        epoch_acc.append(test_acc)
+        epoch_f1.append(test_f1)
+
+        print('Done with image {} out of {}...'.format(min(args.batch_size*(idx+1), len(test_loader.dataset)), len(test_loader.dataset)))
+
+    # calculate statistics and store logs
+    avg_acc = mean(epoch_acc)
+    avg_f1 = mean(epoch_f1)
+    print("\n------------------------ Test set metrics ------------------------")
+    f_log.write("\n------------------------ Test set metrics ------------------------\n")
+    print("Average accuracy = {:.4f}".format(avg_acc))
+    f_log.write("Average accuracy = {:.4f}\n".format(avg_acc))
+    print("Average F1 score = {:.4f}".format(avg_f1))
+    f_log.write("Average F1 score = {:.4f}\n".format(avg_f1))
+    print("--------------------------------------------------------------------\n")
+    f_log.write("--------------------------------------------------------------------\n\n")
+
+    return avg_acc, avg_f1
+            
+if __name__ == "__main__":
+    heads = {'hm': 1, 'vaf': 2, 'haf': 1}
+    model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
+
+    model.load_state_dict(torch.load(args.snapshot), strict=True)
+    if args.cuda:
+        model.cuda()
+    print(model)
+
+    avg_acc, avg_f1 = test(model)
+    f_log.close()
