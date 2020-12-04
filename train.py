@@ -8,11 +8,10 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
 
 import torch
 import torch.optim as optim
-from torch.autograd import Variable
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
@@ -64,7 +63,7 @@ if args.cuda:
 
 kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 6}
 train_loader = DataLoader(TuSimple(args.dataset_dir, 'train', args.random_transforms), **kwargs)
-val_loader = DataLoader(TuSimple(args.dataset_dir, 'val', args.random_transforms), **kwargs)
+val_loader = DataLoader(TuSimple(args.dataset_dir, 'val', False), **kwargs)
 
 # global var to store best validation F1 score across all epochs
 best_f1 = 0.0
@@ -74,7 +73,7 @@ f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 
 # training function
 def train(net, epoch):
-    epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_f1 = list(), list(), list(), list(), list()
+    epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_acc, epoch_f1 = list(), list(), list(), list(), list(), list()
     net.train()
     for b_idx, sample in enumerate(train_loader):
         if args.cuda:
@@ -93,6 +92,7 @@ def train(net, epoch):
         loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
+        train_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
         train_f1 = f1_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
 
         epoch_loss_seg.append(loss_seg.item())
@@ -100,6 +100,7 @@ def train(net, epoch):
         epoch_loss_haf.append(loss_haf.item())
         loss = loss_seg + loss_vaf + loss_haf
         epoch_loss.append(loss.item())
+        epoch_acc.append(train_acc)
         epoch_f1.append(train_f1)
 
         loss.backward()
@@ -109,8 +110,7 @@ def train(net, epoch):
             print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
                 100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item()))
-            with open(os.path.join(args.output_dir, "logs.txt"), "a") as f:
-                f.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\n'.format(
+            f_log.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\n'.format(
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
                 100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item()))
 
@@ -119,6 +119,7 @@ def train(net, epoch):
     avg_loss_vaf = mean(epoch_loss_vaf)
     avg_loss_haf = mean(epoch_loss_haf)
     avg_loss = mean(epoch_loss)
+    avg_acc = mean(epoch_acc)
     avg_f1 = mean(epoch_f1)
     print("\n------------------------ Training metrics ------------------------")
     f_log.write("\n------------------------ Training metrics ------------------------\n")
@@ -130,18 +131,20 @@ def train(net, epoch):
     f_log.write("Average HAF loss for epoch = {:.2f}\n".format(avg_loss_haf))
     print("Average loss for epoch = {:.2f}".format(avg_loss))
     f_log.write("Average loss for epoch = {:.2f}\n".format(avg_loss))
-    print("Average F1 score for epoch = {:.4f}\n".format(avg_f1))
+    print("Average accuracy for epoch = {:.4f}".format(avg_acc))
+    f_log.write("Average accuracy for epoch = {:.4f}\n".format(avg_acc))
+    print("Average F1 score for epoch = {:.4f}".format(avg_f1))
     f_log.write("Average F1 score for epoch = {:.4f}\n".format(avg_f1))
     print("------------------------------------------------------------------\n")
     f_log.write("------------------------------------------------------------------\n\n")
     
-    return net, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1
+    return net, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1
 
 
 # validation function
 def val(net, epoch):
     global best_f1
-    epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_f1 = list(), list(), list(), list(), list()
+    epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_acc, epoch_f1 = list(), list(), list(), list(), list(), list()
     net.eval()
     
     for idx, sample in enumerate(val_loader):
@@ -161,6 +164,7 @@ def val(net, epoch):
         loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
+        val_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
         val_f1 = f1_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
 
         epoch_loss_seg.append(loss_seg.item())
@@ -168,6 +172,7 @@ def val(net, epoch):
         epoch_loss_haf.append(loss_haf.item())
         loss = loss_seg + loss_vaf + loss_haf
         epoch_loss.append(loss.item())
+        epoch_acc.append(val_acc)
         epoch_f1.append(val_f1)
 
         print('Done with image {} out of {}...'.format(min(args.batch_size*(idx+1), len(val_loader.dataset)), len(val_loader.dataset)))
@@ -177,6 +182,7 @@ def val(net, epoch):
     avg_loss_vaf = mean(epoch_loss_vaf)
     avg_loss_haf = mean(epoch_loss_haf)
     avg_loss = mean(epoch_loss)
+    avg_acc = mean(epoch_acc)
     avg_f1 = mean(epoch_f1)
     print("\n------------------------ Validation metrics ------------------------")
     f_log.write("\n------------------------ Validation metrics ------------------------\n")
@@ -188,7 +194,9 @@ def val(net, epoch):
     f_log.write("Average HAF loss for epoch = {:.2f}\n".format(avg_loss_haf))
     print("Average loss for epoch = {:.2f}".format(avg_loss))
     f_log.write("Average loss for epoch = {:.2f}\n".format(avg_loss))
-    print("Average F1 score for epoch = {:.4f}\n".format(avg_f1))
+    print("Average accuracy for epoch = {:.4f}".format(avg_acc))
+    f_log.write("Average accuracy for epoch = {:.4f}\n".format(avg_acc))
+    print("Average F1 score for epoch = {:.4f}".format(avg_f1))
     f_log.write("Average F1 score for epoch = {:.4f}\n".format(avg_f1))
     print("--------------------------------------------------------------------\n")
     f_log.write("--------------------------------------------------------------------\n\n")
@@ -199,7 +207,7 @@ def val(net, epoch):
         torch.save(model.state_dict(), os.path.join(args.output_dir, 'net_' + '%.4d' % (epoch,) + '.pth'))
         best_f1 = avg_f1
 
-    return avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1
+    return avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1
             
 if __name__ == "__main__":
     heads = {'hm': 1, 'vaf': 2, 'haf': 1}
@@ -243,19 +251,22 @@ if __name__ == "__main__":
 
     fig3, ax3 = plt.subplots()
     plt.grid(True)
-    ax3.plot([], 'g', label='Training F1 score')
-    ax3.plot([], 'b', label='Validation F1 score')
+    ax3.plot([], 'r', label='Training accuracy')
+    ax3.plot([], 'g', label='Validation accuracy')
+    ax3.plot([], 'b', label='Training F1 score')
+    ax3.plot([], 'k', label='Validation F1 score')
     ax3.legend()
-    train_f1, val_f1 = list(), list()
+    train_acc, val_acc, train_f1, val_f1 = list(), list(), list(), list()
 
     # trainval loop
     for i in range(1, args.epochs + 1):
         # training epoch
-        model, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1 = train(model, i)
+        model, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1 = train(model, i)
         train_loss_seg.append(avg_loss_seg)
         train_loss_vaf.append(avg_loss_vaf)
         train_loss_haf.append(avg_loss_haf)
         train_loss.append(avg_loss)
+        train_acc.append(avg_acc)
         train_f1.append(avg_f1)
         # plot training loss
         ax1.plot(train_loss_seg, 'r', label='Training segmentation loss')
@@ -265,11 +276,12 @@ if __name__ == "__main__":
         fig1.savefig(os.path.join(args.output_dir, "train_loss.jpg"))
 
         # validation epoch
-        avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_f1 = val(model, i)
+        avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1 = val(model, i)
         val_loss_seg.append(avg_loss_seg)
         val_loss_vaf.append(avg_loss_vaf)
         val_loss_haf.append(avg_loss_haf)
         val_loss.append(avg_loss)
+        val_acc.append(avg_acc)
         val_f1.append(avg_f1)
         # plot validation loss
         ax2.plot(val_loss_seg, 'r', label='Validation segmentation loss')
@@ -278,10 +290,12 @@ if __name__ == "__main__":
         ax2.plot(val_loss, 'k', label='Validation total loss')
         fig2.savefig(os.path.join(args.output_dir, "val_loss.jpg"))
 
-        # plot the train and val F1 scores
-        ax3.plot(train_f1, 'g', label='Train F1 score')
-        ax3.plot(val_f1, 'b', label='Validation F1 score')
-        fig3.savefig(os.path.join(args.output_dir, 'trainval_f1.jpg'))
+        # plot the train and val metrics
+        ax3.plot(train_acc, 'r', label='Train accuracy')
+        ax3.plot(val_acc, 'g', label='Validation accuracy')
+        ax3.plot(train_f1, 'b', label='Train F1 score')
+        ax3.plot(val_f1, 'k', label='Validation F1 score')
+        fig3.savefig(os.path.join(args.output_dir, 'trainval_acc_f1.jpg'))
 
     plt.close('all')
     f_log.close()
