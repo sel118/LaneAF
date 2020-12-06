@@ -27,7 +27,9 @@ class TuSimple(Dataset):
         # convert numpy array (H, W, C), uint8 --> torch tensor (C, H, W), float32
         self.to_tensor = transforms.ToTensor()
         # normalization transform for input images
-        self.normalize = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+        self.mean = (0.485, 0.456, 0.406)
+        self.std = (0.229, 0.224, 0.225)
+        self.normalize = transforms.Normalize(self.mean, self.std)
         # random transformations + resizing for inputs
         if random_transforms:
             self.transform = transforms.Compose([transforms.RandomHorizontalFlip(),
