@@ -110,12 +110,12 @@ def train(net, epoch):
         optimizer.step()
 
         if b_idx % args.log_schedule == 0:
-            print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tF1-score: {:.4f}'.format(
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
-                100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item()))
-            f_log.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\n'.format(
+                100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item(), train_f1))
+            f_log.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tF1-score: {:.4f}\n'.format(
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
-                100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item()))
+                100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item(), train_f1))
 
     # now that the epoch is completed calculate statistics and store logs
     avg_loss_seg = mean(epoch_loss_seg)
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     # BCE(Focal) loss applied to each pixel individually
     if args.loss_type == 'focal':
         model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
-        criterion = FocalLoss(gamma=2.0, alpha=0.25, size_average=True)
+        criterion = FocalLoss(gamma=2.0, alpha=0.9, size_average=True)
     elif args.loss_type == 'bce':
         ## BCE weight
         criterion = FocalLoss(alpha=0.9) # CE loss with weight 0.9 for +ve class
