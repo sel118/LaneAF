@@ -26,7 +26,7 @@ parser.add_argument('--output-dir', type=str, default=None, help='output directo
 parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')
 parser.add_argument('--batch-size', type=int, default=2, metavar='N', help='batch size for training')
 parser.add_argument('--epochs', type=int, default=50, metavar='N', help='number of epochs to train for')
-parser.add_argument('--learning-rate', type=float, default=1e-4, metavar='LR', help='learning rate')
+parser.add_argument('--learning-rate', type=float, default=5e-4, metavar='LR', help='learning rate')
 parser.add_argument('--weight-decay', type=float, default=0.0005, metavar='WD', help='weight decay')
 parser.add_argument('--loss-type', type=str, default='focal', help='Type of classification loss to use (focal/bce)')
 parser.add_argument('--log-schedule', type=int, default=10, metavar='N', help='number of iterations to print/save log after')
@@ -83,6 +83,9 @@ def train(net, epoch):
             sample['vaf'] = sample['vaf'].cuda()
             sample['haf'] = sample['haf'].cuda()
 
+        # zero gradients before forward pass
+        optimizer.zero_grad()
+
         # do the forward pass
         outputs = net(sample['img'])[-1]
 
@@ -93,7 +96,7 @@ def train(net, epoch):
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
         train_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
-        train_f1 = f1_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
+        train_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
 
         epoch_loss_seg.append(loss_seg.item())
         epoch_loss_vaf.append(loss_vaf.item())
@@ -165,7 +168,7 @@ def val(net, epoch):
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
         val_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
-        val_f1 = f1_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
+        val_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
 
         epoch_loss_seg.append(loss_seg.item())
         epoch_loss_vaf.append(loss_vaf.item())
