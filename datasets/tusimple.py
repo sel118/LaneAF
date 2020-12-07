@@ -20,8 +20,8 @@ class TuSimple(Dataset):
     def __init__(self, path, image_set='train', random_transforms=False):
         super(TuSimple, self).__init__()
         assert image_set in ('train', 'val', 'test'), "image_set is not valid!"
-        self.input_size = (768, 1280)
-        self.output_size = (192, 320)
+        self.input_size = (384, 640)
+        self.output_size = (int(self.input_size[0]/4), int(self.input_size[1]/4))
         self.data_dir_path = path
         self.image_set = image_set
         # convert numpy array (H, W, C), uint8 --> torch tensor (C, H, W), float32
