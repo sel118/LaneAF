@@ -68,7 +68,7 @@ class TuSimple(Dataset):
         sample = {'img': self.to_tensor(img), # (3, H, W)
                   'img_name': self.img_list[idx],
                   'seg': self.to_tensor(seg[:, :, 0:1].astype(np.float32)), # (1, H, W)
-                  'mask': self.to_tensor((seg[:, :, 0:1] >= 1).astype(np.int64)),  # (1, H, W)
+                  'mask': self.to_tensor((seg[:, :, 0:1] >= 1).astype(np.float32)),  # (1, H, W)
                   'vaf': self.to_tensor(af[:, :, :2].astype(np.float32)), # (2, H, W)
                   'haf': self.to_tensor(af[:, :, 2:3].astype(np.float32))} # (1, H, W)
 

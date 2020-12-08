@@ -16,7 +16,7 @@ class FocalLoss(nn.Module):
         self.eps = 1e-10
 
     def forward(self, outputs, targets):
-        outputs, targets = torch.sigmoid(outputs.view(-1, 1)), targets.view(-1, 1) # (N, 1)
+        outputs, targets = torch.sigmoid(outputs.view(-1, 1)), targets.view(-1, 1).long() # (N, 1)
         outputs = torch.cat((1 - outputs, outputs), dim=1) # (N, 2)
 
         pt = outputs.gather(1, targets).view(-1)
@@ -32,3 +32,12 @@ class FocalLoss(nn.Module):
         loss = -1 * (1 - pt)**self.gamma * logpt
         if self.size_average: return loss.mean()
         else: return loss.sum()
+
+class IoULoss(nn.Module):
+    def __init__(self):
+        super(IoULoss, self).__init__()
+
+    def forward(self, outputs, targets):
+        num = torch.sum(outputs*targets)
+        den = torch.sum(outputs + targets - outputs*targets)
+        return 1 - num/den

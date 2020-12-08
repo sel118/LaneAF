@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 
 from datasets.tusimple import TuSimple
 from models.dla.pose_dla_dcn import get_pose_net
-from models.loss import FocalLoss
+from models.loss import FocalLoss, IoULoss
 
 
 parser = argparse.ArgumentParser('Options for training lane detection models in PyTorch...')
@@ -28,7 +28,7 @@ parser.add_argument('--batch-size', type=int, default=2, metavar='N', help='batc
 parser.add_argument('--epochs', type=int, default=50, metavar='N', help='number of epochs to train for')
 parser.add_argument('--learning-rate', type=float, default=5e-4, metavar='LR', help='learning rate')
 parser.add_argument('--weight-decay', type=float, default=0.0005, metavar='WD', help='weight decay')
-parser.add_argument('--loss-type', type=str, default='focal', help='Type of classification loss to use (focal/bce)')
+parser.add_argument('--loss-type', type=str, default='wbce', help='Type of classification loss to use (focal/bce/wbce)')
 parser.add_argument('--log-schedule', type=int, default=10, metavar='N', help='number of iterations to print/save log after')
 parser.add_argument('--seed', type=int, default=1, help='set seed to some constant value to reproduce experiments')
 parser.add_argument('--no-cuda', action='store_true', default=False, help='do not use cuda for training')
@@ -90,7 +90,7 @@ def train(net, epoch):
         outputs = net(sample['img'])[-1]
 
         # calculate losses and metrics
-        loss_seg = criterion(outputs['hm'], sample['mask'])
+        loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(outputs['hm'], sample['mask'])
         loss_vaf = F.mse_loss(outputs['vaf'], sample['vaf'])
         loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
@@ -162,7 +162,7 @@ def val(net, epoch):
         outputs = net(sample['img'])[-1]
 
         # calculate losses and metrics
-        loss_seg = criterion(outputs['hm'], sample['mask'])
+        loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(outputs['hm'], sample['mask'])
         loss_vaf = F.mse_loss(outputs['vaf'], sample['vaf'])
         loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
@@ -226,12 +226,16 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
     # BCE(Focal) loss applied to each pixel individually
+    model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
     if args.loss_type == 'focal':
-        model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
-        criterion = FocalLoss(gamma=2.0, alpha=0.9, size_average=True)
+        criterion_1 = FocalLoss(gamma=2.0, alpha=0.9, size_average=True)
     elif args.loss_type == 'bce':
         ## BCE weight
-        criterion = FocalLoss(alpha=0.9) # CE loss with weight 0.9 for +ve class
+        criterion_1 = torch.nn.BCEWithLogitsLoss()
+    elif args.loss_type == 'wbce':
+        ## BCE weight
+        criterion_1 = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor([9.6]).cuda())
+    criterion_2 = IoULoss()
 
     # set up figures and axes
     fig1, ax1 = plt.subplots()
