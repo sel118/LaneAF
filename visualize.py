@@ -20,5 +20,5 @@ def tensor2image(tensor, mean, std):
     return image.astype(np.uint8) # (H, W, C)
 
 def create_viz(img, mask, vaf, haf):
-    im_out = []
+    im_out = [] #test
     return im_out
