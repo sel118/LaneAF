@@ -68,6 +68,7 @@ def test(net):
     epoch_acc, epoch_f1 = list(), list()
     net.eval()
     
+    out_vid = None
     for idx, sample in enumerate(test_loader):
         if args.cuda:
             sample['img'] = sample['img'].cuda()

@@ -39,5 +39,5 @@ def create_viz(img, mask, VAF, haf):
     # visualize HAF
     q = ax4.quiver(np.arange(0, HAF.shape[1], down_rate), -np.arange(0, HAF.shape[0], down_rate), 
                    HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120)
-    plt.show()
+    fig.show()
     return im_out
