@@ -43,5 +43,4 @@ def create_viz(img, mask, VAF, haf):
 
     # img is rgb, convert to opencv's default bgr
     im_out = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
-    plt.clf()
     return im_out
