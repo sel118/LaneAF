@@ -25,15 +25,16 @@ def create_viz(img, mask, VAF, HAF):
     print(mask.shape)
     print(VAF.shape)
     print(HAF.shape)
-    jdasifji
-    #down_rate = 5 # downsample visualization by this factor
-    #fig, (ax1, ax2, ax3, ax4) = plt.subplots(2, 2)
-    
+    #jdasifji
+    down_rate = 5 # downsample visualization by this factor
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(2, 2)
+    ax1.imshow(img)
+    ax2.imshow(mask)
     # visualize VAF
-    #q = ax3.quiver(np.arange(0, label.shape[1], down_rate), -np.arange(0, label.shape[0], down_rate), 
-    #               VAF[::down_rate, ::down_rate, 0], -VAF[::down_rate, ::down_rate, 1], scale=120)
+    q = ax3.quiver(np.arange(0, label.shape[1], down_rate), -np.arange(0, label.shape[0], down_rate), 
+                   VAF[::down_rate, ::down_rate, 0], -VAF[::down_rate, ::down_rate, 1], scale=120)
     # visualize HAF
-    #q = ax4.quiver(np.arange(0, label.shape[1], down_rate), -np.arange(0, label.shape[0], down_rate), 
-    #               HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120)
-    #plt.show()
+    q = ax4.quiver(np.arange(0, label.shape[1], down_rate), -np.arange(0, label.shape[0], down_rate), 
+                   HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120)
+    plt.show()
     return im_out
