@@ -28,7 +28,7 @@ def create_viz(img, mask, VAF, HAF):
     print(HAF.shape)
     #jdasifji
     down_rate = 5 # downsample visualization by this factor
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(2, 2)
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
     ax1.imshow(img)
     ax2.imshow(mask)
     # visualize VAF
