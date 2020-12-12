@@ -22,10 +22,10 @@ def tensor2image(tensor, mean, std):
 
 def create_viz(img, mask, VAF, haf):
     im_out = [] #test
-    print(img.shape)
-    print(mask.shape)
-    print(VAF.shape)
-    print(haf.shape)
+    #print(img.shape)
+    #print(mask.shape)
+    #print(VAF.shape)
+    #print(haf.shape)
     #jdasifji
     haf_dim = np.zeros((haf.shape[0], haf.shape[1]))
     HAF = np.dstack((haf, haf_dim))
@@ -39,5 +39,11 @@ def create_viz(img, mask, VAF, haf):
     # visualize HAF
     q = ax4.quiver(np.arange(0, HAF.shape[1], down_rate), -np.arange(0, HAF.shape[0], down_rate), 
                    HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120)
-    fig.show()
+    #plt.show()
+    # convert canvas to image
+    img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+    img  = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+
+    # img is rgb, convert to opencv's default bgr
+    im_out = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
     return im_out
