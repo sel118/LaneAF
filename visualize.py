@@ -20,13 +20,15 @@ def tensor2image(tensor, mean, std):
     image = image[:, :, ::-1] # RGB to BGR
     return image.astype(np.uint8) # (H, W, C)
 
-def create_viz(img, mask, VAF, HAF):
+def create_viz(img, mask, VAF, haf):
     im_out = [] #test
     print(img.shape)
     print(mask.shape)
     print(VAF.shape)
-    print(HAF.shape)
+    print(haf.shape)
     #jdasifji
+    haf_dim = np.zeros((haf.shape[0], haf.shape[1]))
+    HAF = np.dstack((haf, haf_dim))
     down_rate = 1 # downsample visualization by this factor
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
     ax1.imshow(img)
