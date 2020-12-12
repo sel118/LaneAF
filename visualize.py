@@ -21,12 +21,7 @@ def tensor2image(tensor, mean, std):
     return image.astype(np.uint8) # (H, W, C)
 
 def create_viz(img, mask, VAF, haf):
-    im_out = [] #test
-    #print(img.shape)
-    #print(mask.shape)
-    #print(VAF.shape)
-    #print(haf.shape)
-    #jdasifji
+    im_out = [] 
     haf_dim = np.zeros((haf.shape[0], haf.shape[1]))
     HAF = np.dstack((haf, haf_dim))
     down_rate = 1 # downsample visualization by this factor
@@ -48,4 +43,5 @@ def create_viz(img, mask, VAF, haf):
 
     # img is rgb, convert to opencv's default bgr
     im_out = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
+    plt.clf()
     return im_out
