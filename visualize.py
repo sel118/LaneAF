@@ -5,6 +5,7 @@ import cv2
 
 import torch
 
+import matplotlib.pyplot as plt
 
 def tensor2image(tensor, mean, std):
     mean = mean[..., np.newaxis, np.newaxis] # (nc, 1, 1)
