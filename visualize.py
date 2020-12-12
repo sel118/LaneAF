@@ -40,6 +40,8 @@ def create_viz(img, mask, VAF, haf):
     q = ax4.quiver(np.arange(0, HAF.shape[1], down_rate), -np.arange(0, HAF.shape[0], down_rate), 
                    HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120)
     #plt.show()
+    
+    fig.canvas.draw()
     # convert canvas to image
     img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
     img  = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
