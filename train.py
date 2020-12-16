@@ -73,7 +73,6 @@ f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 
 # training function
 def train(net, epoch):
-    scheduler.step()
     epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_acc, epoch_f1 = list(), list(), list(), list(), list(), list()
     net.train()
     for b_idx, sample in enumerate(train_loader):
@@ -109,7 +108,6 @@ def train(net, epoch):
 
         loss.backward()
         optimizer.step()
-
         if b_idx % args.log_schedule == 0:
             print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tF1-score: {:.4f}'.format(
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
@@ -118,6 +116,8 @@ def train(net, epoch):
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
                 100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item(), train_f1))
 
+    
+    scheduler.step()
     # now that the epoch is completed calculate statistics and store logs
     avg_loss_seg = mean(epoch_loss_seg)
     avg_loss_vaf = mean(epoch_loss_vaf)
