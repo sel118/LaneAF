@@ -73,6 +73,7 @@ f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 
 # training function
 def train(net, epoch):
+    scheduler.step()
     epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_acc, epoch_f1 = list(), list(), list(), list(), list(), list()
     net.train()
     for b_idx, sample in enumerate(train_loader):
@@ -224,6 +225,7 @@ if __name__ == "__main__":
 
     # optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.2)
 
     # BCE(Focal) loss applied to each pixel individually
     model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
