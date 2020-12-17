@@ -95,8 +95,8 @@ def train(net, epoch):
         loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
-        train_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
-        train_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
+        train_acc = accuracy_score((pred > 0.6).astype(np.int64), (target > 0.6).astype(np.int64))
+        train_f1 = f1_score((target > 0.6).astype(np.int64), (pred > 0.6).astype(np.int64))
 
         epoch_loss_seg.append(loss_seg.item())
         epoch_loss_vaf.append(loss_vaf.item())

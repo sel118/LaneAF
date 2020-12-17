@@ -102,8 +102,8 @@ def test(net):
 
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
-        test_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
-        test_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
+        test_acc = accuracy_score((pred > 0.6).astype(np.int64), (target > 0.6).astype(np.int64))
+        test_f1 = f1_score((target > 0.6).astype(np.int64), (pred > 0.6).astype(np.int64))
         epoch_acc.append(test_acc)
         epoch_f1.append(test_f1)
 
