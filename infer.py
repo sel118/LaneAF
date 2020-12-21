@@ -85,8 +85,8 @@ def test(net):
                 np.array(test_loader.dataset.std))
             mask_out = tensor2image(torch.sigmoid(outputs['hm']).repeat(1, 3, 1, 1).detach(), np.array([0.0 for _ in range(3)], 
                 dtype='float32'), np.array([1.0 for _ in range(3)], dtype='float32'))
-            mask_out[mask_out>=0.5] = 1
-            mask_out[mask_out<0.5] = 0
+            #mask_out[mask_out>=0.5] = 1
+            #mask_out[mask_out<0.5] = 0
             vaf_out = np.transpose(outputs['vaf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
             haf_out = np.transpose(outputs['haf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
             img_out = create_viz(img, mask_out, vaf_out, haf_out)
@@ -103,8 +103,8 @@ def test(net):
             out_vid.write(img_out)
 
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
-        pred[pred >= 0.5] = 1
-        pred[pred < 0.5] = 0
+        #pred[pred >= 0.5] = 1
+        #pred[pred < 0.5] = 0
         target = sample['mask'].detach().cpu().numpy().ravel()
         test_acc = accuracy_score((pred > 0.6).astype(np.int64), (target > 0.6).astype(np.int64))
         test_f1 = f1_score((target > 0.6).astype(np.int64), (pred > 0.6).astype(np.int64))
