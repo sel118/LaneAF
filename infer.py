@@ -55,6 +55,9 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
+if args.save_viz:
+    out_vid = None
+
 
 kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 6}
 test_loader = DataLoader(TuSimple(args.dataset_dir, 'test', False), **kwargs)
@@ -67,8 +70,7 @@ f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 def test(net):
     epoch_acc, epoch_f1 = list(), list()
     net.eval()
-    
-    out_vid = None
+
     for idx, sample in enumerate(test_loader):
         if args.cuda:
             sample['img'] = sample['img'].cuda()
@@ -85,17 +87,9 @@ def test(net):
                 np.array(test_loader.dataset.std))
             mask_out = tensor2image(torch.sigmoid(outputs['hm']).repeat(1, 3, 1, 1).detach(), np.array([0.0 for _ in range(3)], 
                 dtype='float32'), np.array([1.0 for _ in range(3)], dtype='float32'))
-            #mask_out[mask_out>=0.5] = 1
-            #mask_out[mask_out<0.5] = 0
             vaf_out = np.transpose(outputs['vaf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
             haf_out = np.transpose(outputs['haf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
             img_out = create_viz(img, mask_out, vaf_out, haf_out)
-            
-            #af_out = torch.cat((outputs['vaf'], outputs['haf']), dim=1)
-            #af_out = tensor2image(af_out.detach(), np.array([0.0 for _ in range(3)], 
-            #    dtype='float32'), np.array([1.0 for _ in range(3)], dtype='float32'))
-            #cv2.imshow('Results', np.concatenate((img[::4, ::4, :], mask_out, af_out), axis=1))
-            #cv2.waitKey(0)
 
             if out_vid is None:
                 out_vid = cv2.VideoWriter(os.path.join(args.output_dir, 'out.avi'), 
@@ -103,8 +97,6 @@ def test(net):
             out_vid.write(img_out)
 
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
-        #pred[pred >= 0.5] = 1
-        #pred[pred < 0.5] = 0
         target = sample['mask'].detach().cpu().numpy().ravel()
         test_acc = accuracy_score((pred > 0.6).astype(np.int64), (target > 0.6).astype(np.int64))
         test_f1 = f1_score((target > 0.6).astype(np.int64), (pred > 0.6).astype(np.int64))

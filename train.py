@@ -116,7 +116,6 @@ def train(net, epoch):
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
                 100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item(), train_f1))
 
-    
     scheduler.step()
     # now that the epoch is completed calculate statistics and store logs
     avg_loss_seg = mean(epoch_loss_seg)
@@ -225,7 +224,7 @@ if __name__ == "__main__":
 
     # optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=4, gamma=0.2)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
     # BCE(Focal) loss applied to each pixel individually
     model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
