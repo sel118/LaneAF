@@ -20,8 +20,8 @@ class TuSimple(Dataset):
     def __init__(self, path, image_set='train', random_transforms=False):
         super(TuSimple, self).__init__()
         assert image_set in ('train', 'val', 'test'), "image_set is not valid!"
-        self.input_size = (384, 640)
-        self.output_size = (int(self.input_size[0]/4), int(self.input_size[1]/4))
+        self.input_size = (352, 640)
+        self.samp_factor = 8
         self.data_dir_path = path
         self.image_set = image_set
         # convert numpy array (H, W, C), uint8 --> torch tensor (C, H, W), float32
@@ -31,14 +31,16 @@ class TuSimple(Dataset):
         self.std = [0.229, 0.224, 0.225]
         self.normalize = transforms.Normalize(self.mean, self.std)
         # random transformations + resizing for inputs
-        if random_transforms:
-            self.transform = transforms.Compose([transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation((-10, 10)), 
-                transforms.RandomResizedCrop(self.input_size, scale=(0.7, 1.0))])
-        else:
-            self.transform = transforms.Resize(self.input_size)
+        #self.output_size = (int(self.input_size[0]/4), int(self.input_size[1]/4))
+        #if random_transforms:
+        #    self.transform = transforms.Compose([transforms.RandomHorizontalFlip(),
+        #        transforms.RandomRotation((-10, 10)), 
+        #        transforms.RandomResizedCrop(self.input_size, scale=(0.7, 1.0))])
+        #else:
+        #    self.transform = transforms.Resize(self.input_size)
         # resizing for outputs
-        self.resize = transforms.Resize(self.output_size)
+        #self.resize = transforms.Resize(self.output_size)
+        self.transform = transforms.Resize(self.input_size)
 
         self.create_index()
 
@@ -63,6 +65,7 @@ class TuSimple(Dataset):
         img = cv2.cvtColor(cv2.imread(self.img_list[idx]), cv2.COLOR_BGR2RGB) # (H, W, 3)
         seg = cv2.imread(self.seg_list[idx]) # (H, W, 3)
         af = np.load(self.af_list[idx]) # (H, W, 3)
+        img, seg, af = img[:704, :, :], seg[:704, :, :], af[:704, :, :]
 
         # convert all outputs to float32 tensors of shape (C, H, W) in range [0, 1]
         sample = {'img': self.to_tensor(img), # (3, H, W)
@@ -74,10 +77,15 @@ class TuSimple(Dataset):
 
         # apply normalization, transformations, and resizing to inputs and outputs
         sample['img'] = self.normalize(self.transform(sample['img']))
-        sample['seg'] = self.resize(self.transform(sample['seg']))
-        sample['mask'] = self.resize(self.transform(sample['mask']))
-        sample['vaf'] = self.resize(self.transform(sample['vaf']))
-        sample['haf'] = self.resize(self.transform(sample['haf']))
+        sample['seg'] = sample['seg'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
+        sample['mask'] = sample['mask'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
+        sample['vaf'] = sample['vaf'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
+        sample['haf'] = sample['haf'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
+        #sample['img'] = self.normalize(self.transform(sample['img']))
+        #sample['seg'] = self.resize(self.transform(sample['seg']))
+        #sample['mask'] = self.resize(self.transform(sample['mask']))
+        #sample['vaf'] = self.resize(self.transform(sample['vaf']))
+        #sample['haf'] = self.resize(self.transform(sample['haf']))
 
         return sample
 

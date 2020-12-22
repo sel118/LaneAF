@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader
 
 from datasets.tusimple import TuSimple
 from models.dla.pose_dla_dcn import get_pose_net
-from models.loss import FocalLoss, IoULoss
+from models.loss import FocalLoss, IoULoss, RegL1Loss
 
 
 parser = argparse.ArgumentParser('Options for training lane detection models in PyTorch...')
@@ -91,8 +91,8 @@ def train(net, epoch):
 
         # calculate losses and metrics
         loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(outputs['hm'], sample['mask'])
-        loss_vaf = F.mse_loss(outputs['vaf'], sample['vaf'])
-        loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
+        loss_vaf = criterion_reg(outputs['vaf'], sample['vaf'], sample['mask'])
+        loss_haf = criterion_reg(outputs['haf'], sample['haf'], sample['mask'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
         train_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
@@ -108,7 +108,6 @@ def train(net, epoch):
 
         loss.backward()
         optimizer.step()
-
         if b_idx % args.log_schedule == 0:
             print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tF1-score: {:.4f}'.format(
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
@@ -117,6 +116,7 @@ def train(net, epoch):
                 epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
                 100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item(), train_f1))
 
+    scheduler.step()
     # now that the epoch is completed calculate statistics and store logs
     avg_loss_seg = mean(epoch_loss_seg)
     avg_loss_vaf = mean(epoch_loss_vaf)
@@ -163,8 +163,8 @@ def val(net, epoch):
 
         # calculate losses and metrics
         loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(outputs['hm'], sample['mask'])
-        loss_vaf = F.mse_loss(outputs['vaf'], sample['vaf'])
-        loss_haf = F.mse_loss(outputs['haf'], sample['haf'])
+        loss_vaf = criterion_reg(outputs['vaf'], sample['vaf'], sample['mask'])
+        loss_haf = criterion_reg(outputs['haf'], sample['haf'], sample['mask'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
         val_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
@@ -224,6 +224,7 @@ if __name__ == "__main__":
 
     # optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
     # BCE(Focal) loss applied to each pixel individually
     model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
@@ -236,6 +237,7 @@ if __name__ == "__main__":
         ## BCE weight
         criterion_1 = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor([9.6]).cuda())
     criterion_2 = IoULoss()
+    criterion_reg = RegL1Loss()
 
     # set up figures and axes
     fig1, ax1 = plt.subplots()
