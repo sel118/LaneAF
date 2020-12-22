@@ -65,7 +65,7 @@ class TuSimple(Dataset):
         img = cv2.cvtColor(cv2.imread(self.img_list[idx]), cv2.COLOR_BGR2RGB) # (H, W, 3)
         seg = cv2.imread(self.seg_list[idx]) # (H, W, 3)
         af = np.load(self.af_list[idx]) # (H, W, 3)
-        img, seg, af = img[:704, :, :], seg[:704, :, :], af[:704, :, :]
+        img, seg, af = img[16:, :, :], seg[16:, :, :], af[16:, :, :]
 
         # convert all outputs to float32 tensors of shape (C, H, W) in range [0, 1]
         sample = {'img': self.to_tensor(img), # (3, H, W)
