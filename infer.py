@@ -55,9 +55,6 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-if args.save_viz:
-    out_vid = None
-
 
 kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 6}
 test_loader = DataLoader(TuSimple(args.dataset_dir, 'test', False), **kwargs)
@@ -70,6 +67,7 @@ f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 def test(net):
     epoch_acc, epoch_f1 = list(), list()
     net.eval()
+    out_vid = None
 
     for idx, sample in enumerate(test_loader):
         if args.cuda:
