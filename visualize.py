@@ -1,11 +1,7 @@
-from math import ceil
-
 import numpy as np
 import cv2
-
-import torch
-
 import matplotlib.pyplot as plt
+
 
 def tensor2image(tensor, mean, std):
     mean = mean[..., np.newaxis, np.newaxis] # (nc, 1, 1)
@@ -21,11 +17,11 @@ def tensor2image(tensor, mean, std):
     return image.astype(np.uint8) # (H, W, C)
 
 def create_viz(img, mask, VAF, haf):
-    im_out = [] 
     haf_dim = np.zeros((haf.shape[0], haf.shape[1]))
     HAF = np.dstack((haf, haf_dim))
     down_rate = 1 # downsample visualization by this factor
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+
     ax1.imshow(img)
     ax2.imshow(mask)
     # visualize VAF
@@ -34,7 +30,6 @@ def create_viz(img, mask, VAF, haf):
     # visualize HAF
     q = ax4.quiver(np.arange(0, HAF.shape[1], down_rate), -np.arange(0, HAF.shape[0], down_rate), 
                    HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120)
-    #plt.show()
     
     fig.canvas.draw()
     # convert canvas to image
