@@ -15,7 +15,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from datasets.tusimple import TuSimple
+from datasets.culane import CULane
 from models.dla.pose_dla_dcn import get_pose_net
 from models.loss import FocalLoss, IoULoss, RegL1Loss
 
@@ -25,9 +25,9 @@ parser.add_argument('--dataset-dir', type=str, default=None, help='path to datas
 parser.add_argument('--output-dir', type=str, default=None, help='output directory for model and logs')
 parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')
 parser.add_argument('--batch-size', type=int, default=2, metavar='N', help='batch size for training')
-parser.add_argument('--epochs', type=int, default=50, metavar='N', help='number of epochs to train for')
-parser.add_argument('--learning-rate', type=float, default=5e-4, metavar='LR', help='learning rate')
-parser.add_argument('--weight-decay', type=float, default=0.0005, metavar='WD', help='weight decay')
+parser.add_argument('--epochs', type=int, default=60, metavar='N', help='number of epochs to train for')
+parser.add_argument('--learning-rate', type=float, default=1e-4, metavar='LR', help='learning rate')
+parser.add_argument('--weight-decay', type=float, default=1e-3, metavar='WD', help='weight decay')
 parser.add_argument('--loss-type', type=str, default='wbce', help='Type of classification loss to use (focal/bce/wbce)')
 parser.add_argument('--log-schedule', type=int, default=10, metavar='N', help='number of iterations to print/save log after')
 parser.add_argument('--seed', type=int, default=1, help='set seed to some constant value to reproduce experiments')
@@ -44,7 +44,7 @@ if args.dataset_dir is None:
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 if args.output_dir is None:
     args.output_dir = datetime.now().strftime("%Y-%m-%d-%H:%M")
-    args.output_dir = os.path.join('.', 'experiments', args.output_dir)
+    args.output_dir = os.path.join('.', 'experiments', 'culane', args.output_dir)
 
 if not os.path.exists(args.output_dir):
     os.makedirs(args.output_dir)
@@ -62,8 +62,8 @@ if args.cuda:
 
 
 kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 6}
-train_loader = DataLoader(TuSimple(args.dataset_dir, 'train', args.random_transforms), **kwargs)
-val_loader = DataLoader(TuSimple(args.dataset_dir, 'val', False), **kwargs)
+train_loader = DataLoader(CULane(args.dataset_dir, 'train', args.random_transforms), **kwargs)
+val_loader = DataLoader(CULane(args.dataset_dir, 'val', False), **kwargs)
 
 # global var to store best validation F1 score across all epochs
 best_f1 = 0.0
@@ -224,12 +224,12 @@ if __name__ == "__main__":
 
     # optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.2)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.2)
 
     # BCE(Focal) loss applied to each pixel individually
     model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
     if args.loss_type == 'focal':
-        criterion_1 = FocalLoss(gamma=2.0, alpha=0.9, size_average=True)
+        criterion_1 = FocalLoss(gamma=2.0, alpha=0.25, size_average=True)
     elif args.loss_type == 'bce':
         ## BCE weight
         criterion_1 = torch.nn.BCEWithLogitsLoss()

@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score, f1_score
 import torch
 from torch.utils.data import DataLoader
 
-from datasets.tusimple import TuSimple
+from datasets.culane import CULane
 from models.dla.pose_dla_dcn import get_pose_net
 from visualize import create_viz, tensor2image
 
@@ -38,8 +38,8 @@ args.batch_size = 1
 # setup args
 args.cuda = not args.no_cuda and torch.cuda.is_available()
 if args.output_dir is None:
-    args.output_dir = datetime.now().strftime("%Y-%m-%d-%H:%M")
-    args.output_dir = os.path.join('.', 'experiments', args.output_dir)
+    args.output_dir = datetime.now().strftime("%Y-%m-%d-%H:%M-infer")
+    args.output_dir = os.path.join('.', 'experiments', 'culane', args.output_dir)
 
 if not os.path.exists(args.output_dir):
     os.makedirs(args.output_dir)
@@ -57,7 +57,7 @@ if args.cuda:
 
 
 kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 6}
-test_loader = DataLoader(TuSimple(args.dataset_dir, 'test', False), **kwargs)
+test_loader = DataLoader(CULane(args.dataset_dir, 'test', False), **kwargs)
 
 # create file handles
 f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
