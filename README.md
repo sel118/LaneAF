@@ -5,7 +5,7 @@ This repository contains the Pytorch code for training and testing all PAFDLA la
 ## Installation
 1) Clone this repository
 2) Install Anaconda
-3) Create a virtual environment and install and dependencies:
+3) Create a virtual environment and install all dependencies:
 ```shell
 conda create -n PAFDLA pip python=3.6
 source activate PAFDLA
