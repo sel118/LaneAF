@@ -26,10 +26,10 @@ def create_viz(img, mask, VAF, haf):
     ax2.imshow(mask)
     # visualize VAF
     q = ax3.quiver(np.arange(0, VAF.shape[1], down_rate), -np.arange(0, VAF.shape[0], down_rate), 
-                   VAF[::down_rate, ::down_rate, 0], -VAF[::down_rate, ::down_rate, 1], scale=120)
+                   VAF[::down_rate, ::down_rate, 0], -VAF[::down_rate, ::down_rate, 1], scale=120, color='g')
     # visualize HAF
     q = ax4.quiver(np.arange(0, HAF.shape[1], down_rate), -np.arange(0, HAF.shape[0], down_rate), 
-                   HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120)
+                   HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120, color='b')
     
     fig.canvas.draw()
     # convert canvas to image
