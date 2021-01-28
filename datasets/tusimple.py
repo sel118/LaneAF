@@ -21,7 +21,7 @@ class TuSimple(Dataset):
         super(TuSimple, self).__init__()
         assert image_set in ('train', 'val', 'test'), "image_set is not valid!"
         self.input_size = (352, 640)
-        self.samp_factor = 8
+        self.samp_factor = 2*4
         self.data_dir_path = path
         self.image_set = image_set
         # convert numpy array (H, W, C), uint8 --> torch tensor (C, H, W), float32
@@ -263,8 +263,8 @@ def generate_affinity_fields(dataset_dir):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate and store affinity fields for entire dataset')
-    parser.add_argument('-o', '--dataset-dir', default='/home/akshay/data/tusimple',
-                        help='The dataset directory ["/path/to/tusimple"]')
+    parser.add_argument('-o', '--dataset-dir', default='/home/akshay/data/TuSimple',
+                        help='The dataset directory ["/path/to/TuSimple"]')
 
     args = parser.parse_args()
     print('Creating labels...')

@@ -70,14 +70,14 @@ The entire [CULane dataset](https://xingangpan.github.io/projects/CULane.html) s
     ├── driver_*_*frame/
     ├── laneseg_label_w16/
     ├── laneseg_label_w16_test/
-    ├── list/
+    └── list/
 ```
-The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
+<!-- The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
 ```shell
 source activate PAFDLA # activate virtual environment
 python datasets/culane.py --dataset-dir=/path/to/CULane/
 source deactivate # exit virtual environment
-```
+``` -->
 
 ### Training
 PAFDLA models can be trained on the CULane as follows:
