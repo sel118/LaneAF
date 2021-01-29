@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 
+from datasets.affinity_fields import decodeAFs
+
 
 def tensor2image(tensor, mean, std):
     mean = mean[..., np.newaxis, np.newaxis] # (nc, 1, 1)
@@ -16,20 +18,25 @@ def tensor2image(tensor, mean, std):
     image = image[:, :, ::-1] # RGB to BGR
     return image.astype(np.uint8) # (H, W, C)
 
-def create_viz(img, mask, VAF, haf):
+def create_viz(img, mask, vaf, haf):
+    output = decodeAFs(mask, vaf, haf, threshold=0.5, viz=False)
+    im_color = cv2.applyColorMap(40*output, cv2.COLORMAP_JET)
+    return im_color
+
+def create_viz_old(img, mask, vaf, haf):
     haf_dim = np.zeros((haf.shape[0], haf.shape[1]))
-    HAF = np.dstack((haf, haf_dim))
+    haf = np.dstack((haf, haf_dim))
     down_rate = 1 # downsample visualization by this factor
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
 
     ax1.imshow(img)
     ax2.imshow(mask)
     # visualize VAF
-    q = ax3.quiver(np.arange(0, VAF.shape[1], down_rate), -np.arange(0, VAF.shape[0], down_rate), 
-                   VAF[::down_rate, ::down_rate, 0], -VAF[::down_rate, ::down_rate, 1], scale=120, color='g')
+    q = ax3.quiver(np.arange(0, vaf.shape[1], down_rate), -np.arange(0, vaf.shape[0], down_rate), 
+                   vaf[::down_rate, ::down_rate, 0], -vaf[::down_rate, ::down_rate, 1], scale=120, color='g')
     # visualize HAF
-    q = ax4.quiver(np.arange(0, HAF.shape[1], down_rate), -np.arange(0, HAF.shape[0], down_rate), 
-                   HAF[::down_rate, ::down_rate, 0], -HAF[::down_rate, ::down_rate, 1], scale=120, color='b')
+    q = ax4.quiver(np.arange(0, haf.shape[1], down_rate), -np.arange(0, haf.shape[0], down_rate), 
+                   haf[::down_rate, ::down_rate, 0], -haf[::down_rate, ::down_rate, 1], scale=120, color='b')
     
     fig.canvas.draw()
     # convert canvas to image

@@ -16,6 +16,11 @@ from torch.utils.data import DataLoader
 import affinity_fields as af
 
 
+def preprocess_outputs(arr, samp_factor=8):
+    arr = arr[16:, :, :]
+    arr = arr[int(samp_factor/2)::samp_factor, int(samp_factor/2)::samp_factor, :]
+    return arr
+
 class TuSimple(Dataset):
     def __init__(self, path, image_set='train', random_transforms=False):
         super(TuSimple, self).__init__()
@@ -65,7 +70,8 @@ class TuSimple(Dataset):
         img = cv2.cvtColor(cv2.imread(self.img_list[idx]), cv2.COLOR_BGR2RGB) # (H, W, 3)
         seg = cv2.imread(self.seg_list[idx]) # (H, W, 3)
         af = np.load(self.af_list[idx]) # (H, W, 3)
-        img, seg, af = img[16:, :, :], seg[16:, :, :], af[16:, :, :]
+        img = img[16:, :, :]
+        seg = preprocess_outputs(seg, self.samp_factor)
 
         # convert all outputs to float32 tensors of shape (C, H, W) in range [0, 1]
         sample = {'img': self.to_tensor(img), # (3, H, W)
@@ -77,10 +83,10 @@ class TuSimple(Dataset):
 
         # apply normalization, transformations, and resizing to inputs and outputs
         sample['img'] = self.normalize(self.transform(sample['img']))
-        sample['seg'] = sample['seg'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
-        sample['mask'] = sample['mask'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
-        sample['vaf'] = sample['vaf'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
-        sample['haf'] = sample['haf'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
+        sample['seg'] = sample['seg']
+        sample['mask'] = sample['mask']
+        sample['vaf'] = sample['vaf']
+        sample['haf'] = sample['haf']
         #sample['img'] = self.normalize(self.transform(sample['img']))
         #sample['seg'] = self.resize(self.transform(sample['seg']))
         #sample['mask'] = self.resize(self.transform(sample['mask']))
@@ -256,6 +262,7 @@ def generate_affinity_fields(dataset_dir):
     im_paths = sorted(glob.glob(glob_pattern))
     for i, f in enumerate(im_paths):
         label = cv2.imread(f)
+        label = preprocess_outputs(label)
         generatedVAFs, generatedHAFs = af.generateAFs(label[:, :, 0], viz=False)
         generatedAFs = np.dstack((generatedVAFs, generatedHAFs[:, :, 0]))
         np.save(f[:-3] + 'npy', generatedAFs)

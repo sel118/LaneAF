@@ -143,7 +143,6 @@ def train(net, epoch):
     
     return net, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1
 
-
 # validation function
 def val(net, epoch):
     global best_f1

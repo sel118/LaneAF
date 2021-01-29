@@ -50,7 +50,7 @@ def generateAFs(label, viz=False):
             prev_row = row
 
     if viz: # visualization
-        down_rate = 5 # downsample visualization by this factor
+        down_rate = 1 # downsample visualization by this factor
         fig, (ax1, ax2) = plt.subplots(1, 2)
         # visualize VAF
         q = ax1.quiver(np.arange(0, label.shape[1], down_rate), -np.arange(0, label.shape[0], down_rate), 

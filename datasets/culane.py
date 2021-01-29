@@ -16,6 +16,11 @@ from torch.utils.data import DataLoader
 import affinity_fields as af
 
 
+def preprocess_outputs(arr, samp_factor=8):
+    arr = arr[14:, 20:-20, :]
+    arr = arr[int(samp_factor/2)::samp_factor, int(samp_factor/2)::samp_factor, :]
+    return arr
+
 class CULane(Dataset):
     def __init__(self, path, image_set='train', random_transforms=False):
         super(CULane, self).__init__()
@@ -56,7 +61,6 @@ class CULane(Dataset):
         with open(listfile) as f:
             for line in f:
                 l = line.strip()
-                #l = line.split(" ")
                 self.img_list.append(os.path.join(self.data_dir_path, l[1:]))  # l[1:]  get rid of the first '/' so as for os.path.join
                 if self.image_set == 'test':
                     self.seg_list.append(os.path.join(self.data_dir_path, 'laneseg_label_w16_test', l[1:-3] + 'png'))
@@ -68,10 +72,9 @@ class CULane(Dataset):
     def __getitem__(self, idx):
         img = cv2.cvtColor(cv2.imread(self.img_list[idx]), cv2.COLOR_BGR2RGB) # (H, W, 3)
         seg = cv2.imread(self.seg_list[idx]) # (H, W, 3)
-        #af = np.load(self.af_list[idx]) # (H, W, 3)
-        #img, seg, af = img[6:, :, :], seg[6:, :, :], af[6:, :, :]
-        #vaf, haf = af[:, :, :2], af[:, :, 2:3]
-        img, seg = img[14:, 20:-20, :], seg[14:, 20:-20, :]
+        af = np.load(self.af_list[idx]) # (H, W, 3)
+        img = img[14:, 20:-20, :]
+        seg = preprocess_outputs(seg, self.samp_factor)
         vaf, haf = af.generateAFs(seg[:, :, 0], viz=False)
 
         # convert all outputs to float32 tensors of shape (C, H, W) in range [0, 1]
@@ -79,15 +82,15 @@ class CULane(Dataset):
                   'img_name': self.img_list[idx],
                   'seg': self.to_tensor(seg[:, :, 0:1].astype(np.float32)), # (1, H, W)
                   'mask': self.to_tensor((seg[:, :, 0:1] >= 1).astype(np.float32)),  # (1, H, W)
-                  'vaf': self.to_tensor(vaf.astype(np.float32)), # (2, H, W)
-                  'haf': self.to_tensor(haf.astype(np.float32))} # (1, H, W)
+                  'vaf': self.to_tensor(af[:, :, :2].astype(np.float32)), # (2, H, W)
+                  'haf': self.to_tensor(af[:, :, 2:3].astype(np.float32))} # (1, H, W)
 
         # apply normalization, transformations, and resizing to inputs and outputs
         sample['img'] = self.normalize(self.transform(sample['img']))
-        sample['seg'] = sample['seg'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
-        sample['mask'] = sample['mask'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
-        sample['vaf'] = sample['vaf'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
-        sample['haf'] = sample['haf'][:, int(self.samp_factor/2)::self.samp_factor, int(self.samp_factor/2)::self.samp_factor]
+        sample['seg'] = sample['seg']
+        sample['mask'] = sample['mask']
+        sample['vaf'] = sample['vaf']
+        sample['haf'] = sample['haf']
         #sample['img'] = self.normalize(self.transform(sample['img']))
         #sample['seg'] = self.resize(self.transform(sample['seg']))
         #sample['mask'] = self.resize(self.transform(sample['mask']))
@@ -148,6 +151,7 @@ def generate_affinity_fields(dataset_dir):
     im_paths = sorted(glob.glob(glob_pattern))
     for i, f in enumerate(im_paths):
         label = cv2.imread(f)
+        label = preprocess_outputs(label)
         generatedVAFs, generatedHAFs = af.generateAFs(label[:, :, 0], viz=False)
         generatedAFs = np.dstack((generatedVAFs, generatedHAFs[:, :, 0]))
         np.save(f[:-3] + 'npy', generatedAFs)
