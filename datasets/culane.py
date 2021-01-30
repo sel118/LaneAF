@@ -75,7 +75,6 @@ class CULane(Dataset):
         af = np.load(self.af_list[idx]) # (H, W, 3)
         img = img[14:, 20:-20, :]
         seg = preprocess_outputs(seg, self.samp_factor)
-        vaf, haf = af.generateAFs(seg[:, :, 0], viz=False)
 
         # convert all outputs to float32 tensors of shape (C, H, W) in range [0, 1]
         sample = {'img': self.to_tensor(img), # (3, H, W)
