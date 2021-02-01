@@ -87,6 +87,10 @@ def test(net):
                 dtype='float32'), np.array([1.0 for _ in range(3)], dtype='float32'))
             vaf_out = np.transpose(outputs['vaf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
             haf_out = np.transpose(outputs['haf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
+            #mask_out = tensor2image(sample['mask'].repeat(1, 3, 1, 1).detach(), np.array([0.0 for _ in range(3)], 
+            #    dtype='float32'), np.array([1.0 for _ in range(3)], dtype='float32'))
+            #vaf_out = np.transpose(sample['vaf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
+            #haf_out = np.transpose(sample['haf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
             img_out = create_viz(img, mask_out, vaf_out, haf_out)
 
             if out_vid is None:

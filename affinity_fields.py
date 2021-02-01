@@ -22,10 +22,12 @@ def generateAFs(label, viz=False):
 
             # get horizontal vector
             for c in cols:
-                if c <= np.mean(cols):
+                if c < np.mean(cols):
                     HAF[row, c, 0] = 1.0 # point to right
-                else:
+                elif c > np.mean(cols):
                     HAF[row, c, 0] = -1.0 # point to left
+                else:
+                    HAF[row, c, 0] = 0.0 # point to left
 
             # check if both previous cols and current cols are non-empty
             if prev_cols.size == 0: # if no previous row/cols, update and continue
@@ -34,7 +36,7 @@ def generateAFs(label, viz=False):
                 continue
             if cols.size == 0: # if no current cols, continue
                 continue
-            col = int(round(np.mean(cols))) # calculate mean
+            col = np.mean(cols) # calculate mean
 
             # get vertical vector
             for c in prev_cols:
@@ -68,27 +70,27 @@ def decodeAFs(BW, VAF, HAF, threshold=0.5, viz=False):
     next_lane_id = 1 # next available lane ID
 
     if viz:
-        im_color = cv2.applyColorMap(255*BW, cv2.COLORMAP_JET)
+        im_color = cv2.applyColorMap(BW, cv2.COLORMAP_JET)
         cv2.imshow('BW', im_color)
         ret = cv2.waitKey(0)
 
     # start decoding from last row to first
     for row in range(BW.shape[0]-1, -1, -1):
-        cols = np.where(BW[row, :] > 0)[0] # get fg cols
+        cols = np.where(BW[row, :] > 50)[0] # get fg cols
         clusters = [[]]
         if cols.size > 0:
             prev_col = cols[0]
 
         # parse horizontally
         for col in cols:
-            if HAF[row, prev_col] > 0 and HAF[row, col] > 0: # keep moving to the right
+            if HAF[row, prev_col] >= 0 and HAF[row, col] >= 0: # keep moving to the right
                 clusters[-1].append(col)
                 prev_col = col
                 continue
-            elif HAF[row, prev_col] > 0 and HAF[row, col] < 0: # found lane center, process VAF
+            elif HAF[row, prev_col] >= 0 and HAF[row, col] < 0: # found lane center, process VAF
                 clusters[-1].append(col)
                 prev_col = col
-            elif HAF[row, prev_col] < 0 and HAF[row, col] > 0: # found lane end, spawn new lane
+            elif HAF[row, prev_col] < 0 and HAF[row, col] >= 0: # found lane end, spawn new lane
                 clusters.append([])
                 clusters[-1].append(col)
                 prev_col = col
@@ -99,14 +101,15 @@ def decodeAFs(BW, VAF, HAF, threshold=0.5, viz=False):
                 continue
 
         # parse vertically
-        for cluster in clusters:
-            if len(cluster) == 0:
-                continue
+        # assign existing lanes
+        assigned = [False for _ in clusters]
+        for idx, pts in enumerate(lane_end_pts): # for each end point in an active lane
             max_score = 0
-            max_lane_id = 0
-            cluster_mean = np.array([[np.mean(cluster), row]], dtype=np.float32)
-
-            for idx, pts in enumerate(lane_end_pts): # for each end point in an active lane
+            max_cluster_id = 0
+            for c, cluster in enumerate(clusters):
+                if len(cluster) == 0:
+                    continue
+                cluster_mean = np.array([[np.mean(cluster), row]], dtype=np.float32)
                 # get unit vector in direction of offset
                 vecs = cluster_mean - pts
                 # unit normalize
@@ -114,25 +117,27 @@ def decodeAFs(BW, VAF, HAF, threshold=0.5, viz=False):
 
                 # update line integral with current estimate
                 vafs = np.array([VAF[int(round(x[1])), int(round(x[0])), :] for x in pts], dtype=np.float32)
+                vafs = vafs / np.linalg.norm(vafs, axis=1, keepdims=True)
                 scores = np.sum(vafs * vecs, axis=1)
                 score = np.mean(scores)
-
                 # update highest score for current pixel
                 if score > max_score:
                     max_score = score
-                    max_lane_id = idx+1
-
-            # if no match is found for current pixel
-            # spawn a new line
-            if max_score < threshold:
+                    max_cluster_id = c
+            if max_score >= threshold:
+                assigned[max_cluster_id] = True
+                max_cluster = clusters[max_cluster_id]
+                # update best lane match with current pixel
+                output[row, max_cluster] = idx+1
+                lane_end_pts[idx] = np.stack((np.array(max_cluster, dtype=np.float32), row*np.ones_like(max_cluster)), axis=1)
+        # assign new lanes
+        for c, cluster in enumerate(clusters):
+            if len(cluster) == 0:
+                continue
+            if not assigned[c]:
                 output[row, cluster] = next_lane_id
                 lane_end_pts.append(np.stack((np.array(cluster, dtype=np.float32), row*np.ones_like(cluster)), axis=1))
                 next_lane_id += 1
-                continue
-
-            # update best lane match with current pixel
-            output[row, cluster] = max_lane_id
-            lane_end_pts[max_lane_id-1] = np.stack((np.array(cluster, dtype=np.float32), row*np.ones_like(cluster)), axis=1)
 
     if viz:
         im_color = cv2.applyColorMap(40*output, cv2.COLORMAP_JET)
