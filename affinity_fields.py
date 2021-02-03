@@ -112,6 +112,9 @@ def decodeAFs(BW, VAF, HAF, threshold=0.5, viz=False):
                 cluster_mean = np.array([[np.mean(cluster), row]], dtype=np.float32)
                 # get unit vector in direction of offset
                 vecs = cluster_mean - pts
+                # if too distant horizontally
+                if np.abs(np.mean(vecs[:, 0])) >= BW.shape[1]/10:
+                    continue
                 # unit normalize
                 vecs = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
 
