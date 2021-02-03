@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
-import affinity_fields as af
+from utils.affinity_fields import generateAFs
 
 
 def preprocess_outputs(arr, samp_factor=8):
@@ -151,7 +151,7 @@ def generate_affinity_fields(dataset_dir):
     for i, f in enumerate(im_paths):
         label = cv2.imread(f)
         label = preprocess_outputs(label)
-        generatedVAFs, generatedHAFs = af.generateAFs(label[:, :, 0], viz=False)
+        generatedVAFs, generatedHAFs = generateAFs(label[:, :, 0], viz=False)
         generatedAFs = np.dstack((generatedVAFs, generatedHAFs[:, :, 0]))
         np.save(f[:-3] + 'npy', generatedAFs)
         print('Generated affinity fields for image %d/%d...' % (i+1, len(im_paths)))
