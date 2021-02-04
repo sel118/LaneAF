@@ -16,16 +16,18 @@ def tensor2image(tensor, mean, std):
     image = image[:, :, ::-1] # RGB to BGR
     return image.astype(np.uint8) # (H, W, C)
 
-def create_viz_tusimple(img, seg, mask, vaf, haf):
-    seg = cv2.resize(seg, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+def create_viz(img, seg, mask, vaf, haf):
+    scale = 8
+    img = cv2.resize(img, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR)
+    #seg_large = cv2.resize(seg, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+    #seg_large_color = cv2.applyColorMap(40*seg_large, cv2.COLORMAP_JET)
+    #img[seg_large > 0, :] = seg_large_color[seg_large > 0, :]
+    img = np.ascontiguousarray(img, dtype=np.uint8)
     seg_color = cv2.applyColorMap(40*seg, cv2.COLORMAP_JET)
-    img[seg > 0, :] = seg_color[seg > 0, :]
-    return img
-
-def create_viz_culane(img, seg, mask, vaf, haf):
-    seg = cv2.resize(seg, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
-    seg_color = cv2.applyColorMap(40*seg, cv2.COLORMAP_JET)
-    img[seg > 0, :] = seg_color[seg > 0, :]
+    rows, cols = np.nonzero(seg)
+    for r, c in zip(rows, cols):
+        img = cv2.arrowedLine(img, (c*scale, r*scale),(int(c*scale+vaf[r, c, 0]*scale*0.75), 
+            int(r*scale+vaf[r, c, 1]*scale*0.5)), seg_color[r, c, :].tolist(), 1, tipLength=0.4)
     return img
 
 def create_viz_old(img, seg, mask, vaf, haf):
