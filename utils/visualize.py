@@ -16,9 +16,17 @@ def tensor2image(tensor, mean, std):
     image = image[:, :, ::-1] # RGB to BGR
     return image.astype(np.uint8) # (H, W, C)
 
-def create_viz(img, seg, mask, vaf, haf):
-    im_color = cv2.applyColorMap(40*seg, cv2.COLORMAP_JET)
-    return im_color
+def create_viz_tusimple(img, seg, mask, vaf, haf):
+    seg = cv2.resize(seg, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+    seg_color = cv2.applyColorMap(40*seg, cv2.COLORMAP_JET)
+    img[seg > 0, :] = seg_color[seg > 0, :]
+    return img
+
+def create_viz_culane(img, seg, mask, vaf, haf):
+    seg = cv2.resize(seg, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+    seg_color = cv2.applyColorMap(40*seg, cv2.COLORMAP_JET)
+    img[seg > 0, :] = seg_color[seg > 0, :]
+    return img
 
 def create_viz_old(img, seg, mask, vaf, haf):
     haf_dim = np.zeros((haf.shape[0], haf.shape[1]))
@@ -41,7 +49,7 @@ def create_viz_old(img, seg, mask, vaf, haf):
     img  = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
     # img is rgb, convert to opencv's default bgr
-    im_out = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
+    #im_out = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
     fig.clear()
     plt.close(fig)
     return im_out

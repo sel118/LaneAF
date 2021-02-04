@@ -15,7 +15,8 @@ from datasets.tusimple import TuSimple
 from models.dla.pose_dla_dcn import get_pose_net
 from utils.affinity_fields import decodeAFs
 from utils.metrics import match_multi_class
-from utils.visualize import create_viz, tensor2image
+from utils.visualize import tensor2image
+from utils.visualize import create_viz_tusimple as create_viz
 
 
 parser = argparse.ArgumentParser('Options for inference with lane detection models in PyTorch...')
