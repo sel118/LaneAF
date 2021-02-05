@@ -95,7 +95,7 @@ def test(net):
         #haf_out = np.transpose(sample['haf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
 
         # decode AFs to get lane instances
-        seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out, threshold=0.5, viz=False)
+        seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out)
         # re-assign lane IDs to match with ground truth
         seg_out = match_multi_class(seg_out.astype(np.int64), sample['seg'][0, 0, :, :].detach().cpu().numpy().astype(np.int64))
 

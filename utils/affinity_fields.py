@@ -64,7 +64,7 @@ def generateAFs(label, viz=False):
 
     return VAF, HAF
 
-def decodeAFs(BW, VAF, HAF, threshold=0.5, viz=False):
+def decodeAFs(BW, VAF, HAF, threshold=10, viz=False):
     output = np.zeros_like(BW, dtype=np.uint8) # initialize output array
     lane_end_pts = [] # keep track of latest lane points
     next_lane_id = 1 # next available lane ID
@@ -104,36 +104,32 @@ def decodeAFs(BW, VAF, HAF, threshold=0.5, viz=False):
         # assign existing lanes
         assigned = [False for _ in clusters]
         for idx, pts in enumerate(lane_end_pts): # for each end point in an active lane
-            max_score = 0
-            max_cluster_id = 0
+            min_error = 1e14
+            min_cluster_id = 0
             for c, cluster in enumerate(clusters):
                 if len(cluster) == 0:
                     continue
+                # mean of current cluster
                 cluster_mean = np.array([[np.mean(cluster), row]], dtype=np.float32)
-                # get unit vector in direction of offset
-                vecs = cluster_mean - pts
-                # if too distant horizontally
-                if np.abs(np.mean(vecs[:, 0])) >= BW.shape[1]/10:
-                    continue
-                # unit normalize
-                vecs = vecs / np.linalg.norm(vecs, axis=1, keepdims=True)
-
-                # update line integral with current estimate
+                # get vafs from lane end points
                 vafs = np.array([VAF[int(round(x[1])), int(round(x[0])), :] for x in pts], dtype=np.float32)
                 vafs = vafs / np.linalg.norm(vafs, axis=1, keepdims=True)
-                scores = np.sum(vafs * vecs, axis=1)
-                score = np.mean(scores)
-                # update highest score for current pixel
-                if score > max_score:
-                    max_score = score
-                    max_cluster_id = c
-            if max_score >= threshold:
-                assigned[max_cluster_id] = True
-                max_cluster = clusters[max_cluster_id]
+                # get predicted cluster center by adding vafs
+                pred_points = pts + vafs*(pts[0, 1] - row)
+                # get error between prediceted cluster center and actual cluster center
+                error = np.mean(np.linalg.norm(pred_points - cluster_mean, axis=1))
+                # update lowest error
+                if error < min_error:
+                    min_error = error
+                    min_cluster_id = c
+            # if minimum error less than threshold, assign cluster to lane
+            if min_error <= threshold:
+                assigned[min_cluster_id] = True
+                min_cluster = clusters[min_cluster_id]
                 # update best lane match with current pixel
-                output[row, max_cluster] = idx+1
-                lane_end_pts[idx] = np.stack((np.array(max_cluster, dtype=np.float32), row*np.ones_like(max_cluster)), axis=1)
-        # assign new lanes
+                output[row, min_cluster] = idx+1
+                lane_end_pts[idx] = np.stack((np.array(min_cluster, dtype=np.float32), row*np.ones_like(min_cluster)), axis=1)
+        # initialize unassigned clusters to new lanes
         for c, cluster in enumerate(clusters):
             if len(cluster) == 0:
                 continue
