@@ -1,14 +1,14 @@
-# PAFDLA models for Lane Detection
+# LaneAF models for Lane Detection
 
-This repository contains the Pytorch code for training and testing all PAFDLA lane detection models.
+This repository contains the Pytorch code for training and testing all LaneAF lane detection models.
 
 ## Installation
 1) Clone this repository
 2) Install Anaconda
 3) Create a virtual environment and install all dependencies:
 ```shell
-conda create -n PAFDLA pip python=3.6
-source activate PAFDLA
+conda create -n LaneAF pip python=3.6
+source activate LaneAF
 pip install numpy scipy matplotlib pillow tqdm kmeans-pytorch scikit-learn
 conda install -c menpo opencv
 pip install https://download.pytorch.org/whl/cu100/torch-1.2.0-cp36-cp36m-manylinux1_x86_64.whl
@@ -41,24 +41,24 @@ The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/iss
 ```
 The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
 ```shell
-source activate PAFDLA # activate virtual environment
+source activate LaneAF # activate virtual environment
 python datasets/tusimple.py --dataset-dir=/path/to/TuSimple/
 source deactivate # exit virtual environment
 ```
 
 ### Training
-PAFDLA models can be trained on the TuSimple as follows:
+LaneAF models can be trained on the TuSimple as follows:
 ```shell
-source activate PAFDLA # activate virtual environment
+source activate LaneAF # activate virtual environment
 python train_tusimple.py --dataset-dir=/path/to/TuSimple/
 source deactivate # exit virtual environment
 ```
-Config files, logs, results and snapshots from running the above scripts will be stored in the `PAFDLA/experiments` folder by default.
+Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments` folder by default.
 
 ### Inference
-Trained PAFDLA models can be run on the TuSimple test set as follows:
+Trained LaneAF models can be run on the TuSimple test set as follows:
 ```shell
-source activate PAFDLA # activate virtual environment
+source activate LaneAF # activate virtual environment
 python infer_tusimple.py --dataset-dir=/path/to/TuSimple/ --snapshot=/path/to/trained/model/snapshot
 source deactivate # exit virtual environment
 ```
@@ -74,24 +74,24 @@ The entire [CULane dataset](https://xingangpan.github.io/projects/CULane.html) s
 ```
 The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
 ```shell
-source activate PAFDLA # activate virtual environment
+source activate LaneAF # activate virtual environment
 python datasets/culane.py --dataset-dir=/path/to/CULane/
 source deactivate # exit virtual environment
 ```
 
 ### Training
-PAFDLA models can be trained on the CULane as follows:
+LaneAF models can be trained on the CULane as follows:
 ```shell
-source activate PAFDLA # activate virtual environment
+source activate LaneAF # activate virtual environment
 python train_culane.py --dataset-dir=/path/to/CULane/
 source deactivate # exit virtual environment
 ```
-Config files, logs, results and snapshots from running the above scripts will be stored in the `PAFDLA/experiments` folder by default.
+Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments` folder by default.
 
 ### Inference
-Trained PAFDLA models can be run on the CULane test set as follows:
+Trained LaneAF models can be run on the CULane test set as follows:
 ```shell
-source activate PAFDLA # activate virtual environment
+source activate LaneAF # activate virtual environment
 python infer_culane.py --dataset-dir=/path/to/CULane/ --snapshot=/path/to/trained/model/snapshot
 source deactivate # exit virtual environment
 ```
