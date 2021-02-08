@@ -18,7 +18,7 @@ from utils.metrics import match_multi_class
 from utils.visualize import tensor2image, create_viz
 
 
-parser = argparse.ArgumentParser('Options for inference with lane detection models in PyTorch...')
+parser = argparse.ArgumentParser('Options for inference with LaneAF models in PyTorch...')
 parser.add_argument('--dataset-dir', type=str, default=None, help='path to dataset')
 parser.add_argument('--output-dir', type=str, default=None, help='output directory for model and logs')
 parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')

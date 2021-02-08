@@ -20,7 +20,7 @@ from models.dla.pose_dla_dcn import get_pose_net
 from models.loss import FocalLoss, IoULoss, RegL1Loss
 
 
-parser = argparse.ArgumentParser('Options for training lane detection models in PyTorch...')
+parser = argparse.ArgumentParser('Options for training LaneAF models in PyTorch...')
 parser.add_argument('--dataset-dir', type=str, default=None, help='path to dataset')
 parser.add_argument('--output-dir', type=str, default=None, help='output directory for model and logs')
 parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')
