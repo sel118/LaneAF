@@ -64,7 +64,7 @@ def generateAFs(label, viz=False):
 
     return VAF, HAF
 
-def decodeAFs(BW, VAF, HAF, threshold=10, viz=False):
+def decodeAFs(BW, VAF, HAF, fg_thresh=128, err_thresh=10, viz=False):
     output = np.zeros_like(BW, dtype=np.uint8) # initialize output array
     lane_end_pts = [] # keep track of latest lane points
     next_lane_id = 1 # next available lane ID
@@ -76,7 +76,7 @@ def decodeAFs(BW, VAF, HAF, threshold=10, viz=False):
 
     # start decoding from last row to first
     for row in range(BW.shape[0]-1, -1, -1):
-        cols = np.where(BW[row, :] > 50)[0] # get fg cols
+        cols = np.where(BW[row, :] > fg_thresh)[0] # get fg cols
         clusters = [[]]
         if cols.size > 0:
             prev_col = cols[0]
@@ -123,7 +123,7 @@ def decodeAFs(BW, VAF, HAF, threshold=10, viz=False):
                     min_error = error
                     min_cluster_id = c
             # if minimum error less than threshold, assign cluster to lane
-            if min_error <= threshold:
+            if min_error <= err_thresh:
                 assigned[min_cluster_id] = True
                 min_cluster = clusters[min_cluster_id]
                 # update best lane match with current pixel
