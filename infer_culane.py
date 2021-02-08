@@ -89,13 +89,9 @@ def test(net):
             np.array([0.0 for _ in range(3)], dtype='float32'), np.array([1.0 for _ in range(3)], dtype='float32'))
         vaf_out = np.transpose(outputs['vaf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
         haf_out = np.transpose(outputs['haf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
-        #mask_out = tensor2image(sample['mask'].repeat(1, 3, 1, 1).detach(), np.array([0.0 for _ in range(3)], 
-        #    dtype='float32'), np.array([1.0 for _ in range(3)], dtype='float32'))
-        #vaf_out = np.transpose(sample['vaf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
-        #haf_out = np.transpose(sample['haf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
 
         # decode AFs to get lane instances
-        seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out)
+        seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out, fg_thresh=128, err_thresh=10)
         # re-assign lane IDs to match with ground truth
         seg_out = match_multi_class(seg_out.astype(np.int64), sample['seg'][0, 0, :, :].detach().cpu().numpy().astype(np.int64))
 
@@ -110,8 +106,9 @@ def test(net):
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
         test_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
-        test_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
         epoch_acc.append(test_acc)
+
+        test_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64), zero_division=1)
         epoch_f1.append(test_f1)
 
         pred = seg_out.ravel().astype(np.int64)
@@ -150,5 +147,5 @@ if __name__ == "__main__":
         model.cuda()
     print(model)
 
-    avg_acc, avg_f1 = test(model)
+    avg_acc, avg_multi_acc, avg_f1 = test(model)
     f_log.close()

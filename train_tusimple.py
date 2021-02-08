@@ -96,7 +96,7 @@ def train(net, epoch):
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
         train_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
-        train_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
+        train_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64), zero_division=1)
 
         epoch_loss_seg.append(loss_seg.item())
         epoch_loss_vaf.append(loss_vaf.item())
@@ -167,7 +167,7 @@ def val(net, epoch):
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
         target = sample['mask'].detach().cpu().numpy().ravel()
         val_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
-        val_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
+        val_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64), zero_division=1)
 
         epoch_loss_seg.append(loss_seg.item())
         epoch_loss_vaf.append(loss_vaf.item())
