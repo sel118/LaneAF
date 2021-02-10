@@ -90,7 +90,7 @@ def train(net, epoch):
         outputs = net(sample['img'])[-1]
 
         # calculate losses and metrics
-        loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(outputs['hm'], sample['mask'])
+        loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(torch.sigmoid(outputs['hm']), sample['mask'])
         loss_vaf = criterion_reg(outputs['vaf'], sample['vaf'], sample['mask'])
         loss_haf = criterion_reg(outputs['haf'], sample['haf'], sample['mask'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
@@ -161,7 +161,7 @@ def val(net, epoch):
         outputs = net(sample['img'])[-1]
 
         # calculate losses and metrics
-        loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(outputs['hm'], sample['mask'])
+        loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(torch.sigmoid(outputs['hm']), sample['mask'])
         loss_vaf = criterion_reg(outputs['vaf'], sample['vaf'], sample['mask'])
         loss_haf = criterion_reg(outputs['haf'], sample['haf'], sample['mask'])
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()

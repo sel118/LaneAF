@@ -29,29 +29,3 @@ def create_viz(img, seg, mask, vaf, haf):
         img = cv2.arrowedLine(img, (c*scale, r*scale),(int(c*scale+vaf[r, c, 0]*scale*0.75), 
             int(r*scale+vaf[r, c, 1]*scale*0.5)), seg_color[r, c, :].tolist(), 1, tipLength=0.4)
     return img
-
-def create_viz_old(img, seg, mask, vaf, haf):
-    haf_dim = np.zeros((haf.shape[0], haf.shape[1]))
-    haf = np.dstack((haf, haf_dim))
-    down_rate = 1 # downsample visualization by this factor
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-
-    ax1.imshow(img)
-    ax2.imshow(mask)
-    # visualize VAF
-    q = ax3.quiver(np.arange(0, vaf.shape[1], down_rate), -np.arange(0, vaf.shape[0], down_rate), 
-                   vaf[::down_rate, ::down_rate, 0], -vaf[::down_rate, ::down_rate, 1], scale=120, color='g')
-    # visualize HAF
-    q = ax4.quiver(np.arange(0, haf.shape[1], down_rate), -np.arange(0, haf.shape[0], down_rate), 
-                   haf[::down_rate, ::down_rate, 0], -haf[::down_rate, ::down_rate, 1], scale=120, color='b')
-    
-    fig.canvas.draw()
-    # convert canvas to image
-    img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    img  = img.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-
-    # img is rgb, convert to opencv's default bgr
-    #im_out = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
-    fig.clear()
-    plt.close(fig)
-    return im_out

@@ -70,21 +70,12 @@ def _neg_loss(pred, gt):
     loss = loss - (pos_loss + neg_loss) / num_pos
   return loss
 
-#class FocalLoss(nn.Module):
-#  '''nn.Module warpper for focal loss'''
-#  def __init__(self):
-#    super(FocalLoss, self).__init__()
-#    self.neg_loss = _neg_loss
-#
-#  def forward(self, out, target):
-#    return self.neg_loss(out, target)
-
 class RegL1Loss(nn.Module):
   def __init__(self):
     super(RegL1Loss, self).__init__()
 
   def forward(self, output, target, mask):
     mask = mask.expand_as(output).float()
-    loss = F.l1_loss(output * mask, target * mask, size_average=False)
+    loss = F.l1_loss(output * mask, target * mask, reduction='sum')
     loss = loss / (mask.sum() + 1e-4)
     return loss
