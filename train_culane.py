@@ -34,7 +34,6 @@ parser.add_argument('--seed', type=int, default=1, help='set seed to some consta
 parser.add_argument('--no-cuda', action='store_true', default=False, help='do not use cuda for training')
 parser.add_argument('--random-transforms', action='store_true', default=False, help='apply random transforms to input during training')
 
-
 args = parser.parse_args()
 # check args
 if args.dataset_dir is None:
@@ -59,7 +58,6 @@ with open(os.path.join(args.output_dir, 'config.json'), 'w') as f:
 torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
-
 
 kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 6}
 train_loader = DataLoader(CULane(args.dataset_dir, 'train', args.random_transforms), **kwargs)
@@ -110,11 +108,11 @@ def train(net, epoch):
         optimizer.step()
         if b_idx % args.log_schedule == 0:
             print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tF1-score: {:.4f}'.format(
-                epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
-                100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item(), train_f1))
+                epoch, (b_idx+1) * args.batch_size, len(train_loader.dataset),
+                100. * (b_idx+1) * args.batch_size / len(train_loader.dataset), loss.item(), train_f1))
             f_log.write('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tF1-score: {:.4f}\n'.format(
-                epoch, (b_idx+1) * len(sample['img']), len(train_loader.dataset),
-                100. * (b_idx+1)*len(sample['img']) / len(train_loader.dataset), loss.item(), train_f1))
+                epoch, (b_idx+1) * args.batch_size, len(train_loader.dataset),
+                100. * (b_idx+1) * args.batch_size / len(train_loader.dataset), loss.item(), train_f1))
 
     scheduler.step()
     # now that the epoch is completed calculate statistics and store logs
@@ -149,7 +147,7 @@ def val(net, epoch):
     epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_acc, epoch_f1 = list(), list(), list(), list(), list(), list()
     net.eval()
     
-    for idx, sample in enumerate(val_loader):
+    for b_idx, sample in enumerate(val_loader):
         if args.cuda:
             sample['img'] = sample['img'].cuda()
             sample['seg'] = sample['seg'].cuda()
@@ -177,7 +175,7 @@ def val(net, epoch):
         epoch_acc.append(val_acc)
         epoch_f1.append(val_f1)
 
-        print('Done with image {} out of {}...'.format(min(args.batch_size*(idx+1), len(val_loader.dataset)), len(val_loader.dataset)))
+        print('Done with image {} out of {}...'.format(min(args.batch_size*(b_idx+1), len(val_loader.dataset)), len(val_loader.dataset)))
 
     # now that the epoch is completed calculate statistics and store logs
     avg_loss_seg = mean(epoch_loss_seg)

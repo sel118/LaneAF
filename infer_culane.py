@@ -26,7 +26,6 @@ parser.add_argument('--seed', type=int, default=1, help='set seed to some consta
 parser.add_argument('--no-cuda', action='store_true', default=False, help='do not use cuda for training')
 parser.add_argument('--save-viz', action='store_true', default=False, help='save visualization depicting intermediate and final results')
 
-
 args = parser.parse_args()
 # check args
 if args.dataset_dir is None:
@@ -57,7 +56,6 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-
 kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 6}
 test_loader = DataLoader(CULane(args.dataset_dir, 'test', False), **kwargs)
 
@@ -71,7 +69,7 @@ def test(net):
     net.eval()
     out_vid = None
 
-    for idx, sample in enumerate(test_loader):
+    for b_idx, sample in enumerate(test_loader):
         if args.cuda:
             sample['img'] = sample['img'].cuda()
             sample['seg'] = sample['seg'].cuda()
@@ -116,7 +114,7 @@ def test(net):
         test_acc = accuracy_score(pred, target)
         epoch_multi_acc.append(test_acc)
 
-        print('Done with image {} out of {}...'.format(min(args.batch_size*(idx+1), len(test_loader.dataset)), len(test_loader.dataset)))
+        print('Done with image {} out of {}...'.format(min(args.batch_size*(b_idx+1), len(test_loader.dataset)), len(test_loader.dataset)))
 
     # calculate statistics and store logs
     avg_acc = mean(epoch_acc)
