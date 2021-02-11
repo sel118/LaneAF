@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
     # optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.2)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
     # BCE(Focal) loss applied to each pixel individually
     model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class

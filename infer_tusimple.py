@@ -56,7 +56,7 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 6}
+kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 1}
 test_loader = DataLoader(TuSimple(args.dataset_dir, 'test', False), **kwargs)
 
 # create file handles
@@ -120,7 +120,7 @@ def test(net):
         haf_out = np.transpose(outputs['haf'][0, :, :, :].detach().cpu().float().numpy(), (1, 2, 0))
 
         # decode AFs to get lane instances
-        seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out, fg_thresh=200, err_thresh=10)
+        seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out, fg_thresh=128, err_thresh=10)
         ed_time = datetime.now()
 
         # re-assign lane IDs to match with ground truth

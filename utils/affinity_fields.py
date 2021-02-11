@@ -83,6 +83,11 @@ def decodeAFs(BW, VAF, HAF, fg_thresh=128, err_thresh=10, viz=False):
 
         # parse horizontally
         for col in cols:
+            if col - prev_col > err_thresh: # if too far away from last point
+                clusters.append([])
+                clusters[-1].append(col)
+                prev_col = col
+                continue
             if HAF[row, prev_col] >= 0 and HAF[row, col] >= 0: # keep moving to the right
                 clusters[-1].append(col)
                 prev_col = col
@@ -108,6 +113,8 @@ def decodeAFs(BW, VAF, HAF, fg_thresh=128, err_thresh=10, viz=False):
             min_cluster_id = 0
             for c, cluster in enumerate(clusters):
                 if len(cluster) == 0:
+                    continue
+                if pts[0, 1] == row:
                     continue
                 # mean of current cluster
                 cluster_mean = np.array([[np.mean(cluster), row]], dtype=np.float32)
