@@ -208,7 +208,7 @@ def val(net, epoch):
         best_f1 = avg_f1
 
     return avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1
-            
+
 if __name__ == "__main__":
     heads = {'hm': 1, 'vaf': 2, 'haf': 1}
     model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)

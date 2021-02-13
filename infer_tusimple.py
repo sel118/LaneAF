@@ -154,7 +154,7 @@ def test(net):
         out_vid.release()
 
     return
-            
+
 if __name__ == "__main__":
     heads = {'hm': 1, 'vaf': 2, 'haf': 1}
     model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
