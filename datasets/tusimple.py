@@ -18,7 +18,9 @@ from utils.affinity_fields import generateAFs
 
 def preprocess_outputs(arr, samp_factor=8):
     arr = arr[16:, :, :]
-    arr = arr[int(samp_factor/2)::samp_factor, int(samp_factor/2)::samp_factor, :]
+    height = int(arr.shape[0]/samp_factor)
+    width = int(arr.shape[1]/samp_factor)
+    arr = cv2.resize(arr, (width, height), interpolation=cv2.INTER_NEAREST)
     return arr
 
 class TuSimple(Dataset):

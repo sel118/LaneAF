@@ -63,31 +63,31 @@ test_loader = DataLoader(TuSimple(args.dataset_dir, 'test', False), **kwargs)
 f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 
 
-def coord_op_to_ip(x, y):
-    # (160*8=1280, 88*8=704) --> (1280, 704+16=720) --> (1280, 720)
+def coord_op_to_ip(x, y, scale):
+    # (160*scale, 88*scale) --> (160*scale, 88*scale+16=720) --> (1280, 720)
     if x is not None:
-        x = int(8*x)
+        x = int(scale*x)
     if y is not None:
-        y = int(8*y+16)
+        y = int(scale*y+16)
     return x, y
 
-def coord_ip_to_op(x, y):
-    # (1280, 720) --> (1280, 720-16=704) --> (1280/8=160, 704/8=88)
+def coord_ip_to_op(x, y, scale):
+    # (1280, 720) --> (1280, 720-16=704) --> (1280/scale, 704/scale)
     if x is not None:
-        x = int(x/8)
+        x = int(x/scale)
     if y is not None:
-        y = int((y-16)/8)
+        y = int((y-16)/scale)
     return x, y
 
 def get_lanes_tusimple(seg_out, h_samples, target_ids):
     lanes = [[] for t_id in target_ids]
     for y_ip in h_samples:
-        _, y_op = coord_ip_to_op(None, y_ip)
+        _, y_op = coord_ip_to_op(None, y_ip, test_loader.dataset.samp_factor)
         for idx, t_id in enumerate(target_ids):
             x_op = np.where(seg_out[y_op, :] == t_id)[0]
             if x_op.size > 0:
                 x_op = np.mean(x_op)
-                x_ip, _ = coord_op_to_ip(x_op, None)
+                x_ip, _ = coord_op_to_ip(x_op, None, test_loader.dataset.samp_factor)
             else:
                 x_ip = -2
             lanes[idx].append(x_ip)
