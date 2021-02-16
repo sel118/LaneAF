@@ -39,18 +39,20 @@ The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/iss
     ├── test_baseline.json
     └── test_label.json
 ```
+<!---
 The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
 ```shell
 source activate laneaf # activate virtual environment
 python datasets/tusimple.py --dataset-dir=/path/to/TuSimple/
 source deactivate # exit virtual environment
 ```
+-->
 
 ### Training
 LaneAF models can be trained on the TuSimple as follows:
 ```shell
 source activate laneaf # activate virtual environment
-python train_tusimple.py --dataset-dir=/path/to/TuSimple/
+python train_tusimple.py --dataset-dir=/path/to/TuSimple/ --random-transforms
 source deactivate # exit virtual environment
 ```
 Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments` folder by default.
@@ -59,7 +61,7 @@ Config files, logs, results and snapshots from running the above scripts will be
 Trained LaneAF models can be run on the TuSimple test set as follows:
 ```shell
 source activate laneaf # activate virtual environment
-python infer_tusimple.py --dataset-dir=/path/to/TuSimple/ --snapshot=/path/to/trained/model/snapshot
+python infer_tusimple.py --dataset-dir=/path/to/TuSimple/ --snapshot=/path/to/trained/model/snapshot --save-viz
 source deactivate # exit virtual environment
 ```
 

@@ -1,6 +1,8 @@
+import json
+
 import numpy as np
 from sklearn.linear_model import LinearRegression
-import json
+from scipy.optimize import linear_sum_assignment
 
 
 # borrowed code from offficial TuSimple benchmark
@@ -96,29 +98,39 @@ def match_multi_class(pred, target):
     pred_ids = np.unique(pred[pred > 0]) # find unique pred ids
     target_ids = np.unique(target[target > 0]) # find unique target ids
     pred_out = np.zeros_like(pred) # initialize output array
+
+    # return input array if no lane points in prediction/target
+    if pred_ids.size == 0:
+        return pred, target_ids.tolist()
+    if target_ids.size == 0:
+        return pred, target_ids.tolist()
+
+    assigned = [False for _ in range(pred_ids.size)] # keep track of which ids have been asssigned
+
+    # create cost matrix for matching predicted with target lanes
+    C = np.zeros((target_ids.size, pred_ids.size))
+    for i, t_id in enumerate(target_ids):
+        for j, p_id in enumerate(pred_ids):
+            C[i, j] = -np.sum(target[pred == p_id] == t_id)
+
+    # optimal linear assignment (Hungarian)
+    row_ind, col_ind = linear_sum_assignment(C)
+    for r, c in zip(row_ind, col_ind):
+        pred_out[pred == pred_ids[c]] = target_ids[r]
+        assigned[c] = True
+
+    # get next available ID to assign
     if target_ids.size > 0:
         max_target_id = np.amax(target_ids)
     else:
         max_target_id = 0
-
-    sizes = np.array([pred[pred == idx].size for idx in pred_ids]) # get sizes of each predicted class
-    order = np.argsort(sizes)[::-1] # descending order of size
-    pred_ids = pred_ids[order] # sort prediceted classes in descending order of size
-    assigned = [False for _ in range(max_target_id + 1)] # keep track of which target ids have been asssigned
-
     next_id = max_target_id + 1 # next available class id
-    for idx in pred_ids:
-        # get target id with max overlap
-        max_id = np.argmax(np.bincount(target[pred == idx]))
-        if max_id == 0:
-            pred_out[pred == idx] = next_id
-            next_id += 1
-            continue
-        if assigned[max_id]:
-            pred_out[pred == idx] = next_id
-            next_id += 1
+    # assign IDs to unassigned fg pixels
+    for i, p_id in enumerate(pred_ids):
+        if assigned[i]:
+            pass
         else:
-            pred_out[pred == idx] = max_id
-            assigned[max_id] = True
+            pred_out[pred == p_id] == next_id
+            next_id += 1
 
-    return pred_out, target_ids.tolist()
+    return pred_out
