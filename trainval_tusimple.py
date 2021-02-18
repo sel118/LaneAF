@@ -9,14 +9,13 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 from sklearn.metrics import accuracy_score, f1_score
-from scipy.interpolate import CubicSpline
 
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from datasets.tusimple import TuSimple
+from datasets.tusimple import TuSimple, get_lanes_tusimple
 from models.dla.pose_dla_dcn import get_pose_net
 from models.loss import FocalLoss, IoULoss, RegL1Loss
 from utils.affinity_fields import decodeAFs
@@ -77,49 +76,6 @@ best_acc = 0.0
 # create file handles
 f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 
-
-def coord_op_to_ip(x, y, scale):
-    # (160*scale, 88*scale) --> (160*scale, 88*scale+16=720) --> (1280, 720)
-    if x is not None:
-        x = int(scale*x)
-    if y is not None:
-        y = int(scale*y+16)
-    return x, y
-
-def coord_ip_to_op(x, y, scale):
-    # (1280, 720) --> (1280, 720-16=704) --> (1280/scale, 704/scale)
-    if x is not None:
-        x = int(x/scale)
-    if y is not None:
-        y = int((y-16)/scale)
-    return x, y
-
-def get_lanes_tusimple(seg_out, h_samples):
-    cs = []
-    lane_ids = np.unique(seg_out[seg_out > 0])
-    for idx, t_id in enumerate(lane_ids):
-        xs, ys = [], []
-        for y_op in range(seg_out.shape[0]):
-            x_op = np.where(seg_out[y_op, :] == t_id)[0]
-            if x_op.size > 0:
-                x_op = np.mean(x_op)
-                x_ip, y_ip = coord_op_to_ip(x_op, y_op, val_loader.dataset.samp_factor)
-                xs.append(x_ip)
-                ys.append(y_ip)
-        if len(xs) >= 2:
-            cs.append(CubicSpline(ys, xs, extrapolate=False))
-        else:
-            cs.append(None)
-    lanes = [[] for t_id in lane_ids]
-    for idx, t_id in enumerate(lane_ids):
-        if cs[idx] is not None:
-            x_out = cs[idx](np.array(h_samples))
-            x_out[np.isnan(x_out)] = -2
-            lanes[idx] = x_out.tolist()
-        else:
-            lanes[idx] = [-2 for _ in h_samples]
-            print("Lane completely missed!")
-    return lanes
 
 # training function
 def train(net, epoch):
@@ -230,7 +186,7 @@ def val(net, epoch):
 
         # fill results in output structure
         json_pred[b_idx]['run_time'] = (ed_time - st_time).total_seconds()*1000.
-        json_pred[b_idx]['lanes'] = get_lanes_tusimple(seg_out, json_pred[b_idx]['h_samples'])
+        json_pred[b_idx]['lanes'] = get_lanes_tusimple(seg_out, json_pred[b_idx]['h_samples'], val_loader.dataset.samp_factor)
 
         # write results to file
         with open(os.path.join(args.output_dir, 'outputs.json'), 'a') as f:

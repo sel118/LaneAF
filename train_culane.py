@@ -61,6 +61,7 @@ if args.cuda:
 
 kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 6}
 train_loader = DataLoader(CULane(args.dataset_dir, 'train', args.random_transforms), **kwargs)
+kwargs = {'batch_size': 1, 'shuffle': False, 'num_workers': 3}
 val_loader = DataLoader(CULane(args.dataset_dir, 'val', False), **kwargs)
 
 # global var to store best validation F1 score across all epochs
@@ -74,25 +75,28 @@ def train(net, epoch):
     epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_acc, epoch_f1 = list(), list(), list(), list(), list(), list()
     net.train()
     for b_idx, sample in enumerate(train_loader):
+        input_img, input_seg, input_mask, input_af = sample
         if args.cuda:
-            sample['img'] = sample['img'].cuda()
-            sample['seg'] = sample['seg'].cuda()
-            sample['mask'] = sample['mask'].cuda()
-            sample['vaf'] = sample['vaf'].cuda()
-            sample['haf'] = sample['haf'].cuda()
+            input_img = input_img.cuda()
+            input_seg = input_seg.cuda()
+            input_mask = input_mask.cuda()
+            input_af = input_af.cuda()
 
         # zero gradients before forward pass
         optimizer.zero_grad()
 
         # do the forward pass
-        outputs = net(sample['img'])[-1]
+        outputs = net(input_img)[-1]
 
         # calculate losses and metrics
-        loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(torch.sigmoid(outputs['hm']), sample['mask'])
-        loss_vaf = criterion_reg(outputs['vaf'], sample['vaf'], sample['mask'])
-        loss_haf = criterion_reg(outputs['haf'], sample['haf'], sample['mask'])
+        _mask = (input_mask != train_loader.dataset.ignore_label).float()
+        loss_seg = criterion_1(outputs['hm']*_mask, input_mask*_mask) + criterion_2(torch.sigmoid(outputs['hm']), input_mask)
+        loss_vaf = 0.5*criterion_reg(outputs['vaf'], input_af[:, :2, :, :], input_mask)
+        loss_haf = 0.5*criterion_reg(outputs['haf'], input_af[:, 2:3, :, :], input_mask)
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
-        target = sample['mask'].detach().cpu().numpy().ravel()
+        target = input_mask.detach().cpu().numpy().ravel()
+        pred[target == train_loader.dataset.ignore_label] = 0
+        target[target == train_loader.dataset.ignore_label] = 0
         train_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
         train_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64), zero_division=1)
 
@@ -148,22 +152,25 @@ def val(net, epoch):
     net.eval()
     
     for b_idx, sample in enumerate(val_loader):
+        input_img, input_seg, input_mask, input_af = sample
         if args.cuda:
-            sample['img'] = sample['img'].cuda()
-            sample['seg'] = sample['seg'].cuda()
-            sample['mask'] = sample['mask'].cuda()
-            sample['vaf'] = sample['vaf'].cuda()
-            sample['haf'] = sample['haf'].cuda()
+            input_img = input_img.cuda()
+            input_seg = input_seg.cuda()
+            input_mask = input_mask.cuda()
+            input_af = input_af.cuda()
 
         # do the forward pass
-        outputs = net(sample['img'])[-1]
+        outputs = net(input_img)[-1]
 
         # calculate losses and metrics
-        loss_seg = criterion_1(outputs['hm'], sample['mask']) + criterion_2(torch.sigmoid(outputs['hm']), sample['mask'])
-        loss_vaf = criterion_reg(outputs['vaf'], sample['vaf'], sample['mask'])
-        loss_haf = criterion_reg(outputs['haf'], sample['haf'], sample['mask'])
+        _mask = (input_mask != val_loader.dataset.ignore_label).float()
+        loss_seg = criterion_1(outputs['hm'], input_mask) + criterion_2(torch.sigmoid(outputs['hm']), input_mask)
+        loss_vaf = 0.5*criterion_reg(outputs['vaf'], input_af[:, :2, :, :], input_mask)
+        loss_haf = 0.5*criterion_reg(outputs['haf'], input_af[:, 2:3, :, :], input_mask)
         pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
-        target = sample['mask'].detach().cpu().numpy().ravel()
+        target = input_mask.detach().cpu().numpy().ravel()
+        pred[target == val_loader.dataset.ignore_label] = 0
+        target[target == val_loader.dataset.ignore_label] = 0
         val_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
         val_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64), zero_division=1)
 
@@ -221,7 +228,7 @@ if __name__ == "__main__":
 
     # optimizer
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.2)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
     # BCE(Focal) loss applied to each pixel individually
     model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class

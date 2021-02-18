@@ -55,7 +55,7 @@ source activate laneaf # activate virtual environment
 python train_tusimple.py --dataset-dir=/path/to/TuSimple/ --random-transforms
 source deactivate # exit virtual environment
 ```
-Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments` folder by default.
+Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments/tusimple` folder by default.
 
 ### Inference
 Trained LaneAF models can be run on the TuSimple test set as follows:
@@ -74,21 +74,23 @@ The entire [CULane dataset](https://xingangpan.github.io/projects/CULane.html) s
     ├── laneseg_label_w16_test/
     └── list/
 ```
+<!---
 The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
 ```shell
 source activate laneaf # activate virtual environment
 python datasets/culane.py --dataset-dir=/path/to/CULane/
 source deactivate # exit virtual environment
 ```
+-->
 
 ### Training
 LaneAF models can be trained on the CULane as follows:
 ```shell
 source activate laneaf # activate virtual environment
-python train_culane.py --dataset-dir=/path/to/CULane/
+python train_culane.py --dataset-dir=/path/to/CULane/ --random-transforms
 source deactivate # exit virtual environment
 ```
-Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments` folder by default.
+Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments/culane` folder by default.
 
 ### Inference
 Trained LaneAF models can be run on the CULane test set as follows:

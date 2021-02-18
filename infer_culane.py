@@ -11,10 +11,10 @@ from sklearn.metrics import accuracy_score, f1_score
 import torch
 from torch.utils.data import DataLoader
 
-from datasets.culane import CULane
+from datasets.culane import CULane, get_lanes_culane
 from models.dla.pose_dla_dcn import get_pose_net
 from utils.affinity_fields import decodeAFs
-from utils.metrics import match_multi_class
+from utils.metrics import match_multi_class, LaneEval
 from utils.visualize import tensor2image, create_viz
 
 
@@ -56,7 +56,7 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 6}
+kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 1}
 test_loader = DataLoader(CULane(args.dataset_dir, 'test', False), **kwargs)
 
 # create file handles
@@ -65,23 +65,24 @@ f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
 
 # test function
 def test(net):
-    epoch_acc, epoch_multi_acc, epoch_f1 = list(), list(), list()
     net.eval()
     out_vid = None
+    json_pred = [json.loads(line) for line in open(os.path.join(args.dataset_dir, 'test_baseline.json')).readlines()]
 
     for b_idx, sample in enumerate(test_loader):
+        input_img, input_seg, input_mask, input_af = sample
         if args.cuda:
-            sample['img'] = sample['img'].cuda()
-            sample['seg'] = sample['seg'].cuda()
-            sample['mask'] = sample['mask'].cuda()
-            sample['vaf'] = sample['vaf'].cuda()
-            sample['haf'] = sample['haf'].cuda()
+            input_img = input_img.cuda()
+            input_seg = input_seg.cuda()
+            input_mask = input_mask.cuda()
+            input_af = input_af.cuda()
 
+        st_time = datetime.now()
         # do the forward pass
-        outputs = net(sample['img'])[-1]
+        outputs = net(input_img)[-1]
 
         # convert to arrays
-        img = tensor2image(sample['img'].detach(), np.array(test_loader.dataset.mean), 
+        img = tensor2image(input_img.detach(), np.array(test_loader.dataset.mean), 
             np.array(test_loader.dataset.std))
         mask_out = tensor2image(torch.sigmoid(outputs['hm']).repeat(1, 3, 1, 1).detach(), 
             np.array([0.0 for _ in range(3)], dtype='float32'), np.array([1.0 for _ in range(3)], dtype='float32'))
@@ -90,8 +91,19 @@ def test(net):
 
         # decode AFs to get lane instances
         seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out, fg_thresh=128, err_thresh=10)
+        ed_time = datetime.now()
+
         # re-assign lane IDs to match with ground truth
-        seg_out = match_multi_class(seg_out.astype(np.int64), sample['seg'][0, 0, :, :].detach().cpu().numpy().astype(np.int64))
+        seg_out = match_multi_class(seg_out.astype(np.int64), input_seg[0, 0, :, :].detach().cpu().numpy().astype(np.int64))
+
+        # fill results in output structure
+        json_pred[b_idx]['run_time'] = (ed_time - st_time).total_seconds()*1000.
+        json_pred[b_idx]['lanes'] = get_lanes_culane(seg_out, json_pred[b_idx]['h_samples'], test_loader.dataset.samp_factor)
+
+        # write results to file
+        with open(os.path.join(args.output_dir, 'outputs.json'), 'a') as f:
+            json.dump(json_pred[b_idx], f)
+            f.write('\n')
 
         if args.save_viz:
             img_out = create_viz(img, seg_out.astype(np.uint8), mask_out, vaf_out, haf_out)
@@ -101,41 +113,18 @@ def test(net):
                     cv2.VideoWriter_fourcc(*'H264'), 5, (img_out.shape[1], img_out.shape[0]))
             out_vid.write(img_out)
 
-        pred = torch.sigmoid(outputs['hm']).detach().cpu().numpy().ravel()
-        target = sample['mask'].detach().cpu().numpy().ravel()
-        test_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
-        epoch_acc.append(test_acc)
-
-        test_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64), zero_division=1)
-        epoch_f1.append(test_f1)
-
-        pred = seg_out.ravel().astype(np.int64)
-        target = sample['seg'][0, 0, :, :].detach().cpu().numpy().ravel().astype(np.int64)
-        test_acc = accuracy_score(pred, target)
-        epoch_multi_acc.append(test_acc)
-
         print('Done with image {} out of {}...'.format(min(args.batch_size*(b_idx+1), len(test_loader.dataset)), len(test_loader.dataset)))
 
-    # calculate statistics and store logs
-    avg_acc = mean(epoch_acc)
-    avg_multi_acc = mean(epoch_multi_acc)
-    avg_f1 = mean(epoch_f1)
-    print("\n------------------------ Test set metrics ------------------------")
-    f_log.write("\n------------------------ Test set metrics ------------------------\n")
-    print("Average accuracy = {:.4f}".format(avg_acc))
-    f_log.write("Average accuracy = {:.4f}\n".format(avg_acc))
-    print("Average multi-class accuracy = {:.4f}".format(avg_multi_acc))
-    f_log.write("Average multi-class accuracy = {:.4f}\n".format(avg_multi_acc))
-    print("Average F1 score = {:.4f}".format(avg_f1))
-    f_log.write("Average F1 score = {:.4f}\n".format(avg_f1))
-    print("--------------------------------------------------------------------\n")
-    f_log.write("--------------------------------------------------------------------\n\n")
+    # benchmark on CULane
+    results = LaneEval.bench_one_submit(os.path.join(args.output_dir, 'outputs.json'), os.path.join(args.dataset_dir, 'test_label.json'))
+    with open(os.path.join(args.output_dir, 'results.json'), 'w') as f:
+        json.dump(results, f)
 
     if args.save_viz:
         out_vid.release()
 
-    return avg_acc, avg_multi_acc, avg_f1
-            
+    return
+
 if __name__ == "__main__":
     heads = {'hm': 1, 'vaf': 2, 'haf': 1}
     model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
@@ -145,5 +134,4 @@ if __name__ == "__main__":
         model.cuda()
     print(model)
 
-    avg_acc, avg_multi_acc, avg_f1 = test(model)
-    f_log.close()
+    test(model)

@@ -6,6 +6,7 @@ import argparse
 
 import cv2
 import numpy as np
+from scipy.interpolate import CubicSpline
 from PIL import Image
 
 import torch
@@ -14,45 +15,87 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
 from utils.affinity_fields import generateAFs
+import datasets.transforms as tf
 
 
-def preprocess_outputs(arr, samp_factor=8):
-    arr = arr[14:, 20:-20, :]
-    arr = arr[int(samp_factor/2)::samp_factor, int(samp_factor/2)::samp_factor, :]
-    return arr
+def coord_op_to_ip(x, y, scale):
+    # (208*scale, 72*scale) --> (208*scale, 72*scale+14=590) --> (1664, 590) --> (1640, 590)
+    if x is not None:
+        x = int(scale*x)
+        x = x*1640./1664.
+    if y is not None:
+        y = int(scale*y+14)
+    return x, y
+
+def coord_ip_to_op(x, y, scale):
+    # (1640, 590) --> (1664, 590) --> (1664, 590-14=576) --> (1664/scale, 576/scale)
+    if x is not None:
+        x = x*1664./1640.
+        x = int(x/scale)
+    if y is not None:
+        y = int((y-14)/scale)
+    return x, y
+
+def get_lanes_culane(seg_out, h_samples, samp_factor):
+    cs = []
+    lane_ids = np.unique(seg_out[seg_out > 0])
+    for idx, t_id in enumerate(lane_ids):
+        xs, ys = [], []
+        for y_op in range(seg_out.shape[0]):
+            x_op = np.where(seg_out[y_op, :] == t_id)[0]
+            if x_op.size > 0:
+                x_op = np.mean(x_op)
+                x_ip, y_ip = coord_op_to_ip(x_op, y_op, samp_factor)
+                xs.append(x_ip)
+                ys.append(y_ip)
+        if len(xs) >= 2:
+            cs.append(CubicSpline(ys, xs, extrapolate=False))
+        else:
+            cs.append(None)
+    lanes = [[] for t_id in lane_ids]
+    for idx, t_id in enumerate(lane_ids):
+        if cs[idx] is not None:
+            x_out = cs[idx](np.array(h_samples))
+            x_out[np.isnan(x_out)] = -2
+            lanes[idx] = x_out.tolist()
+        else:
+            lanes[idx] = [-2 for _ in h_samples]
+            print("Lane completely missed!")
+    return lanes
 
 class CULane(Dataset):
     def __init__(self, path, image_set='train', random_transforms=False):
         super(CULane, self).__init__()
         assert image_set in ('train', 'val', 'test'), "image_set is not valid!"
-        self.input_size = (288, 800) # original image res: (590, 1640) -> (590-14, 1640-40)/2
-        self.samp_factor = 2*4
+        self.input_size = (288, 832) # original image res: (590, 1640) -> (590-14, 1640+24)/2
+        self.output_scale = 0.25
+        self.samp_factor = 2./self.output_scale
         self.data_dir_path = path
         self.image_set = image_set
-        # convert numpy array (H, W, C), uint8 --> torch tensor (C, H, W), float32
-        self.to_tensor = transforms.ToTensor()
+        self.random_transforms = random_transforms
         # normalization transform for input images
-        self.mean = [0.485, 0.456, 0.406]
-        self.std = [0.229, 0.224, 0.225]
-        self.normalize = transforms.Normalize(self.mean, self.std)
-        # random transformations + resizing for inputs
-        #self.output_size = (int(self.input_size[0]/4), int(self.input_size[1]/4))
-        #if random_transforms:
-        #    self.transform = transforms.Compose([transforms.RandomHorizontalFlip(),
-        #        transforms.RandomRotation((-10, 10)), 
-        #        transforms.RandomResizedCrop(self.input_size, scale=(0.7, 1.0))])
-        #else:
-        #    self.transform = transforms.Resize(self.input_size)
-        # resizing for outputs
-        #self.resize = transforms.Resize(self.output_size)
-        self.transform = transforms.Resize(self.input_size)
+        self.mean = [0.485, 0.456, 0.406] #[103.939, 116.779, 123.68]
+        self.std = [0.229, 0.224, 0.225] #[1, 1, 1]
+        self.ignore_label = 255
+        if self.random_transforms:
+            self.transforms = transforms.Compose([
+                tf.GroupRandomScale(size=(0.5, 0.6), interpolation=(cv2.INTER_LINEAR, cv2.INTER_NEAREST)),
+                tf.GroupRandomCropRatio(size=(self.input_size[1], self.input_size[0])),
+                tf.GroupRandomHorizontalFlip(),
+                tf.GroupRandomRotation(degree=(-1, 1), interpolation=(cv2.INTER_LINEAR, cv2.INTER_NEAREST), padding=(self.mean, (self.ignore_label, ))),
+                tf.GroupNormalize(mean=(self.mean, (0, )), std=(self.std, (1, ))),
+            ])
+        else:
+            self.transforms = transforms.Compose([
+                tf.GroupRandomScale(size=(0.5, 0.5), interpolation=(cv2.INTER_LINEAR, cv2.INTER_NEAREST)),
+                tf.GroupNormalize(mean=(self.mean, (0, )), std=(self.std, (1, ))),
+            ])
 
         self.create_index()
 
     def create_index(self):
         self.img_list = []
         self.seg_list = []
-        self.af_list = []
 
         listfile = os.path.join(self.data_dir_path, "list", "{}.txt".format(self.image_set))
         if not os.path.exists(listfile):
@@ -64,103 +107,35 @@ class CULane(Dataset):
                 self.img_list.append(os.path.join(self.data_dir_path, l[1:]))  # l[1:]  get rid of the first '/' so as for os.path.join
                 if self.image_set == 'test':
                     self.seg_list.append(os.path.join(self.data_dir_path, 'laneseg_label_w16_test', l[1:-3] + 'png'))
-                    self.af_list.append(os.path.join(self.data_dir_path, 'laneseg_label_w16_test', l[1:-3] + 'npy'))
                 else:
                     self.seg_list.append(os.path.join(self.data_dir_path, 'laneseg_label_w16', l[1:-3] + 'png'))
-                    self.af_list.append(os.path.join(self.data_dir_path, 'laneseg_label_w16', l[1:-3] + 'npy'))
 
     def __getitem__(self, idx):
-        img = cv2.cvtColor(cv2.imread(self.img_list[idx]), cv2.COLOR_BGR2RGB) # (H, W, 3)
-        seg = cv2.imread(self.seg_list[idx]) # (H, W, 3)
-        af = np.load(self.af_list[idx]) # (H, W, 3)
-        img = img[14:, 20:-20, :]
-        seg = preprocess_outputs(seg, self.samp_factor)
+        img = cv2.imread(self.img_list[idx]).astype(np.float32)/255. # (H, W, 3)
+        seg = cv2.imread(self.seg_list[idx], cv2.IMREAD_UNCHANGED) # (H, W)
+        seg = np.tile(seg[..., np.newaxis], (1, 1, 3)) # (H, W, 3)
+        img = cv2.resize(img[14:, :, :], (1664, 576), interpolation=cv2.INTER_LINEAR)
+        seg = cv2.resize(seg[14:, :, :], (1664, 576), interpolation=cv2.INTER_NEAREST)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img, seg = self.transforms((img, seg))
+        seg = cv2.resize(seg, None, fx=self.output_scale, fy=self.output_scale, interpolation=cv2.INTER_NEAREST)
+        # create binary mask
+        mask = seg[:, :, 0].copy()
+        mask[seg[:, :, 0] >= 1] = 1
+        mask[seg[:, :, 0] == self.ignore_label] = self.ignore_label
+        # create AFs
+        seg_wo_ignore = seg[:, :, 0].copy()
+        seg_wo_ignore[seg_wo_ignore == self.ignore_label] = 0
+        vaf, haf = generateAFs(seg_wo_ignore.astype(np.long), viz=False)
+        af = np.concatenate((vaf, haf[:, :, 0:1]), axis=2)
 
-        # convert all outputs to float32 tensors of shape (C, H, W) in range [0, 1]
-        sample = {'img': self.to_tensor(img), # (3, H, W)
-                  'img_name': self.img_list[idx],
-                  'seg': self.to_tensor(seg[:, :, 0:1].astype(np.float32)), # (1, H, W)
-                  'mask': self.to_tensor((seg[:, :, 0:1] >= 1).astype(np.float32)),  # (1, H, W)
-                  'vaf': self.to_tensor(af[:, :, :2].astype(np.float32)), # (2, H, W)
-                  'haf': self.to_tensor(af[:, :, 2:3].astype(np.float32))} # (1, H, W)
+        # convert all outputs to torch tensors
+        img = torch.from_numpy(img).permute(2, 0, 1).contiguous().float()
+        seg = torch.from_numpy(seg[:, :, 0]).contiguous().long().unsqueeze(0)
+        mask = torch.from_numpy(mask).contiguous().float().unsqueeze(0)
+        af = torch.from_numpy(af).permute(2, 0, 1).contiguous().float()
 
-        # apply normalization, transformations, and resizing to inputs and outputs
-        sample['img'] = self.normalize(self.transform(sample['img']))
-        sample['seg'] = sample['seg']
-        sample['mask'] = sample['mask']
-        sample['vaf'] = sample['vaf']
-        sample['haf'] = sample['haf']
-        #sample['img'] = self.normalize(self.transform(sample['img']))
-        #sample['seg'] = self.resize(self.transform(sample['seg']))
-        #sample['mask'] = self.resize(self.transform(sample['mask']))
-        #sample['vaf'] = self.resize(self.transform(sample['vaf']))
-        #sample['haf'] = self.resize(self.transform(sample['haf']))
-
-        return sample
+        return img, seg, mask, af
 
     def __len__(self):
-        return len(self.img_list)
-
-    @staticmethod
-    def collate(batch):
-        if isinstance(batch[0]['img'], torch.Tensor):
-            img = torch.stack([b['img'] for b in batch])
-        else:
-            img = [b['img'] for b in batch]
-
-        if batch[0]['seg'] is None:
-            seg = None
-        elif isinstance(batch[0]['seg'], torch.Tensor):
-            seg = torch.stack([b['seg'] for b in batch])
-        else:
-            seg = [b['seg'] for b in batch]
-
-        if batch[0]['mask'] is None:
-            mask = None
-        elif isinstance(batch[0]['mask'], torch.Tensor):
-            mask = torch.stack([b['mask'] for b in batch])
-        else:
-            mask = [b['mask'] for b in batch]
-
-        if batch[0]['vaf'] is None:
-            vaf = None
-        elif isinstance(batch[0]['vaf'], torch.Tensor):
-            vaf = torch.stack([b['vaf'] for b in batch])
-        else:
-            vaf = [b['vaf'] for b in batch]
-
-        if batch[0]['haf'] is None:
-            haf = None
-        elif isinstance(batch[0]['haf'], torch.Tensor):
-            haf = torch.stack([b['haf'] for b in batch])
-        else:
-            haf = [b['haf'] for b in batch]
-
-        samples = {'img': img,
-                   'img_name': [x['img_name'] for x in batch],
-                   'seg': seg,
-                   'mask': mask,
-                   'vaf': vaf,
-                   'haf': haf}
-
-        return samples
-
-def generate_affinity_fields(dataset_dir):
-    glob_pattern = os.path.join(dataset_dir, 'laneseg_label_w16*', '*', '*', '*.png')
-    im_paths = sorted(glob.glob(glob_pattern))
-    for i, f in enumerate(im_paths):
-        label = cv2.imread(f)
-        label = preprocess_outputs(label)
-        generatedVAFs, generatedHAFs = generateAFs(label[:, :, 0], viz=False)
-        generatedAFs = np.dstack((generatedVAFs, generatedHAFs[:, :, 0]))
-        np.save(f[:-3] + 'npy', generatedAFs)
-        print('Generated affinity fields for image %d/%d...' % (i+1, len(im_paths)))
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate and store affinity fields for entire dataset')
-    parser.add_argument('-o', '--dataset-dir', default='/home/akshay/data/CULane',
-                        help='The dataset directory ["/path/to/CULane"]')
-
-    args = parser.parse_args()
-    print('Creating affinity fields...')
-    generate_affinity_fields(args.dataset_dir)
+        return 300#len(self.img_list)

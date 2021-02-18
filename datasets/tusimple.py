@@ -6,6 +6,7 @@ import argparse
 
 import cv2
 import numpy as np
+from scipy.interpolate import CubicSpline
 from PIL import Image
 
 import torch
@@ -16,6 +17,49 @@ from torch.utils.data import DataLoader
 from utils.affinity_fields import generateAFs
 import datasets.transforms as tf
 
+
+def coord_op_to_ip(x, y, scale):
+    # (160*scale, 88*scale) --> (160*scale, 88*scale+16=720) --> (1280, 720)
+    if x is not None:
+        x = int(scale*x)
+    if y is not None:
+        y = int(scale*y+16)
+    return x, y
+
+def coord_ip_to_op(x, y, scale):
+    # (1280, 720) --> (1280, 720-16=704) --> (1280/scale, 704/scale)
+    if x is not None:
+        x = int(x/scale)
+    if y is not None:
+        y = int((y-16)/scale)
+    return x, y
+
+def get_lanes_tusimple(seg_out, h_samples, samp_factor):
+    cs = []
+    lane_ids = np.unique(seg_out[seg_out > 0])
+    for idx, t_id in enumerate(lane_ids):
+        xs, ys = [], []
+        for y_op in range(seg_out.shape[0]):
+            x_op = np.where(seg_out[y_op, :] == t_id)[0]
+            if x_op.size > 0:
+                x_op = np.mean(x_op)
+                x_ip, y_ip = coord_op_to_ip(x_op, y_op, samp_factor)
+                xs.append(x_ip)
+                ys.append(y_ip)
+        if len(xs) >= 2:
+            cs.append(CubicSpline(ys, xs, extrapolate=False))
+        else:
+            cs.append(None)
+    lanes = [[] for t_id in lane_ids]
+    for idx, t_id in enumerate(lane_ids):
+        if cs[idx] is not None:
+            x_out = cs[idx](np.array(h_samples))
+            x_out[np.isnan(x_out)] = -2
+            lanes[idx] = x_out.tolist()
+        else:
+            lanes[idx] = [-2 for _ in h_samples]
+            print("Lane completely missed!")
+    return lanes
 
 class TuSimple(Dataset):
     def __init__(self, path, image_set='train', random_transforms=False):
@@ -50,7 +94,6 @@ class TuSimple(Dataset):
     def create_index(self):
         self.img_list = []
         self.seg_list = []
-        self.af_list = []
 
         listfile = os.path.join(self.data_dir_path, "seg_label", "list", "{}_gt.txt".format(self.image_set))
         if not os.path.exists(listfile):
@@ -62,7 +105,6 @@ class TuSimple(Dataset):
                 l = line.split(" ")
                 self.img_list.append(os.path.join(self.data_dir_path, l[0][1:]))  # l[0][1:]  get rid of the first '/' so as for os.path.join
                 self.seg_list.append(os.path.join(self.data_dir_path, l[1][1:]))
-                self.af_list.append(os.path.join(self.data_dir_path, l[1][1:-3] + 'npy'))
 
     def __getitem__(self, idx):
         img = cv2.imread(self.img_list[idx]).astype(np.float32)/255. # (H, W, 3)
@@ -208,7 +250,7 @@ def generate_labels(dataset_dir):
     print("Finished generating labels for test set")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate and store affinity fields for entire dataset')
+    parser = argparse.ArgumentParser(description='Generate and store labels for entire dataset')
     parser.add_argument('-o', '--dataset-dir', default='/home/akshay/data/TuSimple',
                         help='The dataset directory ["/path/to/TuSimple"]')
 
