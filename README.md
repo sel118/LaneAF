@@ -64,6 +64,7 @@ source activate laneaf # activate virtual environment
 python infer_tusimple.py --dataset-dir=/path/to/TuSimple/ --snapshot=/path/to/trained/model/snapshot --save-viz
 source deactivate # exit virtual environment
 ```
+This will generate outputs in the TuSimple format and also produce benchmark metrics using their [official implementation](https://github.com/TuSimple/tusimple-benchmark/tree/master/doc/lane_detection).
 
 ## CULane
 The entire [CULane dataset](https://xingangpan.github.io/projects/CULane.html) should be downloaded and organized as follows:
@@ -99,3 +100,21 @@ source activate laneaf # activate virtual environment
 python infer_culane.py --dataset-dir=/path/to/CULane/ --snapshot=/path/to/trained/model/snapshot --save-viz
 source deactivate # exit virtual environment
 ```
+This will generate outputs in the CULane format. You can then use their [official code](https://github.com/XingangPan/SCNN) to evaluate the model on the CULane benchmark.
+
+## Pre-trained Weights
+You can download our pre-trained model weights using [this link](https://drive.google.com/file/d/1GJoVQfDyxhUT8Y5EqTRV9PX3WWckfxWG/view?usp=sharing).
+
+<!---
+## Citation
+If you find our code and/or models useful in your research, please consider citing the following papers:
+
+    @inproceedings{vora2017generalizing,
+      title={On generalizing driver gaze zone estimation using convolutional neural networks},
+      author={Vora, Sourabh and Rangesh, Akshay and Trivedi, Mohan M},
+      booktitle={2017 IEEE Intelligent Vehicles Symposium (IV)},
+      pages={849--854},
+      year={2017},
+      organization={IEEE}
+    }
+-->
