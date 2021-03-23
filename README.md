@@ -1,6 +1,6 @@
-# LaneAF models for Lane Detection
+# LaneAF: Robust Multi-Lane Detection with Affinity Fields
 
-This repository contains the Pytorch code for training and testing all LaneAF lane detection models.
+This repository contains Pytorch code for training and testing LaneAF lane detection models introduced in [this paper](http://cvrr.ucsd.edu/publications/2021/LaneAF.pdf).
 
 ## Installation
 1) Clone this repository
@@ -109,12 +109,8 @@ You can download our pre-trained model weights using [this link](https://drive.g
 ## Citation
 If you find our code and/or models useful in your research, please consider citing the following papers:
 
-    @inproceedings{vora2017generalizing,
-      title={On generalizing driver gaze zone estimation using convolutional neural networks},
-      author={Vora, Sourabh and Rangesh, Akshay and Trivedi, Mohan M},
-      booktitle={2017 IEEE Intelligent Vehicles Symposium (IV)},
-      pages={849--854},
-      year={2017},
-      organization={IEEE}
+    @article{abualsaudlaneaf,
+        title={LaneAF: Robust Multi-Lane Detection with Affinity Fields},
+        author={Abualsaud, Hala and Liu, Sean and Lu, David and Situ, Kenny and Rangesh, Akshay and Trivedi, Mohan M}
     }
 -->
