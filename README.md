@@ -1,3 +1,5 @@
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/laneaf-robust-multi-lane-detection-with/lane-detection-on-culane)](https://paperswithcode.com/sota/lane-detection-on-culane?p=laneaf-robust-multi-lane-detection-with)
+
 # LaneAF: Robust Multi-Lane Detection with Affinity Fields
 
 This repository contains Pytorch code for training and testing LaneAF lane detection models introduced in [this paper](http://cvrr.ucsd.edu/publications/2021/LaneAF.pdf).
