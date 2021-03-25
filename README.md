@@ -104,7 +104,7 @@ source deactivate # exit virtual environment
 ```
 This will generate outputs in the CULane format. You can then use their [official code](https://github.com/XingangPan/SCNN) to evaluate the model on the CULane benchmark.
 
-## Pre-trained Weights
+## Pre-trained Weights 
 You can download our pre-trained model weights using [this link](https://drive.google.com/file/d/1GJoVQfDyxhUT8Y5EqTRV9PX3WWckfxWG/view?usp=sharing).
 
 <!---
