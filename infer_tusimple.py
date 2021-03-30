@@ -98,7 +98,7 @@ def test(net):
 
         # fill results in output structure
         json_pred[b_idx]['run_time'] = (ed_time - st_time).total_seconds()*1000.
-        if json_pred[b_idx]['run_time']:
+        if json_pred[b_idx]['run_time'] > 200:
             json_pred[b_idx]['run_time'] = 200
         json_pred[b_idx]['lanes'] = get_lanes_tusimple(seg_out, json_pred[b_idx]['h_samples'], test_loader.dataset.samp_factor)
 
