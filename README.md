@@ -111,8 +111,10 @@ You can download our pre-trained model weights using [this link](https://drive.g
 ## Citation
 If you find our code and/or models useful in your research, please consider citing the following papers:
 
-    @article{abualsaudlaneaf,
-        title={LaneAF: Robust Multi-Lane Detection with Affinity Fields},
-        author={Abualsaud, Hala and Liu, Sean and Lu, David and Situ, Kenny and Rangesh, Akshay and Trivedi, Mohan M}
+    @article{abualsaud2021laneaf,
+    title={LaneAF: Robust Multi-Lane Detection with Affinity Fields},
+    author={Abualsaud, Hala and Liu, Sean and Lu, David and Situ, Kenny and Rangesh, Akshay and Trivedi, Mohan M},
+    journal={arXiv preprint arXiv:2103.12040},
+    year={2021}
     }
 -->
