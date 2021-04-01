@@ -47,20 +47,19 @@ def get_lanes_tusimple(seg_out, h_samples, samp_factor):
                 x_ip, y_ip = coord_op_to_ip(x_op, y_op, samp_factor)
                 xs.append(x_ip)
                 ys.append(y_ip)
-        if len(xs) >= 2:
+        if len(xs) >= 10:
             cs.append(CubicSpline(ys, xs, extrapolate=False))
         else:
             cs.append(None)
     # get x-coordinates from fitted spline
-    lanes = [[] for t_id in lane_ids]
+    lanes = []
     for idx, t_id in enumerate(lane_ids):
         if cs[idx] is not None:
             x_out = cs[idx](np.array(h_samples))
             x_out[np.isnan(x_out)] = -2
-            lanes[idx] = x_out.tolist()
+            lanes.append(x_out.tolist())
         else:
-            lanes[idx] = [-2 for _ in h_samples]
-            print("Lane completely missed!")
+            print("Lane too small, discarding...")
     return lanes
 
 class TuSimple(Dataset):

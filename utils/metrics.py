@@ -130,7 +130,8 @@ def match_multi_class(pred, target):
         if assigned[i]:
             pass
         else:
-            pred_out[pred == p_id] == next_id
+            pred_out[pred == p_id] = next_id
             next_id += 1
+    assert np.unique(pred[pred > 0]).size == np.unique(pred_out[pred_out > 0]).size, "Number of output lanes altered!"
 
     return pred_out

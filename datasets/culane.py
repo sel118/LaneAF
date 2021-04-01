@@ -66,9 +66,8 @@ def get_lanes_culane(seg_out, samp_factor):
                     continue
                 else:
                     lane += [_x, _y]
-        else:
-            print("Lane completely missed!")
-        if len(lane) <= 16:
+        if len(lane) <= 28:
+            print("Lane too small, discarding...")
             continue
         lanes.append(lane)
     return lanes
