@@ -107,7 +107,6 @@ This will generate outputs in the CULane format. You can then use their [officia
 ## Pre-trained Weights 
 You can download our pre-trained model weights using [this link](https://drive.google.com/file/d/1GJoVQfDyxhUT8Y5EqTRV9PX3WWckfxWG/view?usp=sharing).
 
-<!---
 ## Citation
 If you find our code and/or models useful in your research, please consider citing the following papers:
 
@@ -117,4 +116,4 @@ If you find our code and/or models useful in your research, please consider citi
     journal={arXiv preprint arXiv:2103.12040},
     year={2021}
     }
--->
+
