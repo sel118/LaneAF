@@ -11,7 +11,7 @@ This repository contains Pytorch code for training and testing LaneAF lane detec
 ```shell
 conda create -n laneaf pip python=3.6
 source activate laneaf
-pip install numpy scipy matplotlib pillow tqdm kmeans-pytorch scikit-learn
+pip install numpy scipy matplotlib pillow scikit-learn
 pip install opencv-python
 pip install https://download.pytorch.org/whl/cu101/torch-1.7.0%2Bcu101-cp36-cp36m-linux_x86_64.whl
 pip install https://download.pytorch.org/whl/cu101/torchvision-0.8.1%2Bcu101-cp36-cp36m-linux_x86_64.whl
