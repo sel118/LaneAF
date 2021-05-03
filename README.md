@@ -41,14 +41,14 @@ The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/iss
     ├── test_baseline.json
     └── test_label.json
 ```
-<!---
+
 The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
 ```shell
 source activate laneaf # activate virtual environment
 python datasets/tusimple.py --dataset-dir=/path/to/TuSimple/
 source deactivate # exit virtual environment
 ```
--->
+
 
 ### Training
 LaneAF models can be trained on the TuSimple as follows:
@@ -77,14 +77,14 @@ The entire [CULane dataset](https://xingangpan.github.io/projects/CULane.html) s
     ├── laneseg_label_w16_test/
     └── list/
 ```
-<!---
+
 The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
 ```shell
 source activate laneaf # activate virtual environment
 python datasets/culane.py --dataset-dir=/path/to/CULane/
 source deactivate # exit virtual environment
 ```
--->
+
 
 ### Training
 LaneAF models can be trained on the CULane as follows:
