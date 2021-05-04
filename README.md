@@ -41,17 +41,15 @@ The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/iss
     ├── test_baseline.json
     └── test_label.json
 ```
-
-The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
+The model requires ground truth segmentation labels during training. You can generate these for the entire dataset as follows:
 ```shell
 source activate laneaf # activate virtual environment
 python datasets/tusimple.py --dataset-dir=/path/to/TuSimple/
 source deactivate # exit virtual environment
 ```
 
-
 ### Training
-LaneAF models can be trained on the TuSimple as follows:
+LaneAF models can be trained on the TuSimple dataset as follows:
 ```shell
 source activate laneaf # activate virtual environment
 python train_tusimple.py --dataset-dir=/path/to/TuSimple/ --random-transforms
@@ -78,16 +76,8 @@ The entire [CULane dataset](https://xingangpan.github.io/projects/CULane.html) s
     └── list/
 ```
 
-The model requires ground truth affinity fields during training. You can generate these for the entire dataset as follows:
-```shell
-source activate laneaf # activate virtual environment
-python datasets/culane.py --dataset-dir=/path/to/CULane/
-source deactivate # exit virtual environment
-```
-
-
 ### Training
-LaneAF models can be trained on the CULane as follows:
+LaneAF models can be trained on the CULane dataset as follows:
 ```shell
 source activate laneaf # activate virtual environment
 python train_culane.py --dataset-dir=/path/to/CULane/ --random-transforms
