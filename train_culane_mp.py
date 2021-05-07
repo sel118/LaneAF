@@ -390,37 +390,3 @@ if __name__ == "__main__":
     assert args.world_size == 1, "Only world size == 1 multi-process training now"
     ngpus_per_node = torch.cuda.device_count()
     mp.spawn(worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
-
-    # # check args
-    # if args.dataset_dir is None:
-    #     assert False, 'Path to dataset not provided!'
-    #
-    # # setup args
-    # args.cuda = not args.no_cuda and torch.cuda.is_available()
-    # if args.output_dir is None:
-    #     args.output_dir = datetime.now().strftime("%Y-%m-%d-%H:%M")
-    #     args.output_dir = os.path.join('.', 'experiments', 'culane', args.output_dir)
-    #
-    # if not os.path.exists(args.output_dir):
-    #     os.makedirs(args.output_dir)
-    # else:
-    #     assert False, 'Output directory already exists!'
-    #
-    # # store config in output directory
-    # with open(os.path.join(args.output_dir, 'config.json'), 'w') as f:
-    #     json.dump(vars(args), f)
-    #
-    # # set random seed
-    # torch.manual_seed(args.seed)
-    # if args.cuda:
-    #     torch.cuda.manual_seed(args.seed)
-    #
-    # kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 6}
-    # train_loader = DataLoader(CULane(args.dataset_dir, 'train', args.random_transforms), **kwargs)
-    # kwargs = {'batch_size': 1, 'shuffle': False, 'num_workers': 3}
-    # val_loader = DataLoader(CULane(args.dataset_dir, 'val', False), **kwargs)
-    #
-    # # global var to store best validation F1 score across all epochs
-    # best_f1 = 0.0
-    # # create file handles
-    # f_log = open(os.path.join(args.output_dir, "logs.txt"), "w")
