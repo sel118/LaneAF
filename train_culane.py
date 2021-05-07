@@ -33,10 +33,8 @@ parser.add_argument('--loss-type', type=str, default='wbce', help='Type of class
 parser.add_argument('--log-schedule', type=int, default=10, metavar='N',
                     help='number of iterations to print/save log after')
 parser.add_argument('--seed', type=int, default=1, help='set seed to some constant value to reproduce experiments')
-parser.add_argument('--no-cuda', action='store_true', default=False, help='do not use cuda for training')
 parser.add_argument('--random-transforms', action='store_true', default=False,
                     help='apply random transforms to input during training')
-
 parser.add_argument('-j', '--workers', default=10, type=int, metavar='N',
                     help='number of data loading workers (default: 10)')
 parser.add_argument('--world-size', default=1, type=int,
@@ -50,6 +48,7 @@ parser.add_argument('--backend', default='nccl', type=str,
 
 args = parser.parse_args()
 
+best_f1 = 0.0
 
 def dist_print(*args, **kwargs):
     if dist.get_rank() == 0:
@@ -65,10 +64,9 @@ def train(model, train_loader, criterions, optimizer, scheduler, f_log, epoch, g
 
     for b_idx, sample in enumerate(train_loader):
         input_img, input_seg, input_mask, input_af = sample
-        if args.cuda:
-            input_img = input_img.cuda(gpu, non_blocking=True)
-            input_mask = input_mask.cuda(gpu, non_blocking=True)
-            input_af = input_af.cuda(gpu, non_blocking=True)
+        input_img = input_img.cuda(gpu, non_blocking=True)
+        input_mask = input_mask.cuda(gpu, non_blocking=True)
+        input_af = input_af.cuda(gpu, non_blocking=True)
 
         # zero gradients before forward pass
         optimizer.zero_grad()
@@ -101,7 +99,7 @@ def train(model, train_loader, criterions, optimizer, scheduler, f_log, epoch, g
 
         loss.backward()
         optimizer.step()
-        if b_idx % args.log_schedule == 0:
+        if b_idx % args.log_schedule == 0 and f_log is not None:
             print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}\tF1-score: {:.4f}'.format(
                 epoch, (b_idx + 1) * args.batch_size, len(train_loader.dataset),
                        100. * (b_idx + 1) * args.batch_size / len(train_loader.dataset), loss.item(), train_f1))
@@ -147,10 +145,9 @@ def val(net, val_loader, criterions, f_log, epoch, gpu):
     criterion_1, criterion_2, criterion_reg = criterions
     for b_idx, sample in enumerate(val_loader):
         input_img, input_seg, input_mask, input_af = sample
-        if args.cuda:
-            input_img = input_img.cuda(gpu, non_blocking=True)
-            input_mask = input_mask.cuda(gpu, non_blocking=True)
-            input_af = input_af.cuda(gpu, non_blocking=True)
+        input_img = input_img.cuda(gpu, non_blocking=True)
+        input_mask = input_mask.cuda(gpu, non_blocking=True)
+        input_af = input_af.cuda(gpu, non_blocking=True)
 
         # do the forward pass
         outputs = net(input_img)[-1]
@@ -176,12 +173,27 @@ def val(net, val_loader, criterions, f_log, epoch, gpu):
         epoch_f1.append(val_f1)
 
     # now that the epoch is completed calculate statistics and store logs
-    avg_loss_seg = mean(epoch_loss_seg)
-    avg_loss_vaf = mean(epoch_loss_vaf)
-    avg_loss_haf = mean(epoch_loss_haf)
-    avg_loss = mean(epoch_loss)
-    avg_acc = mean(epoch_acc)
-    avg_f1 = mean(epoch_f1)
+    avg_loss_seg = torch.tensor(mean(epoch_loss_seg)).cuda(gpu)
+    avg_loss_vaf = torch.tensor(mean(epoch_loss_vaf)).cuda(gpu)
+    avg_loss_haf = torch.tensor(mean(epoch_loss_haf)).cuda(gpu)
+    avg_loss = torch.tensor(mean(epoch_loss)).cuda(gpu)
+    avg_acc = torch.tensor(mean(epoch_acc)).cuda(gpu)
+    avg_f1 = torch.tensor(mean(epoch_f1)).cuda(gpu)
+
+    # Sync whole dataset, no need this in training.
+    dist.all_reduce(avg_f1)
+    dist.all_reduce(avg_acc)
+    dist.all_reduce(avg_loss)
+    dist.all_reduce(avg_loss_haf)
+    dist.all_reduce(avg_loss_vaf)
+    dist.all_reduce(avg_loss_seg)
+    avg_f1 /= dist.get_world_size()
+    avg_acc /= dist.get_world_size()
+    avg_loss /= dist.get_world_size()
+    avg_loss_haf /= dist.get_world_size()
+    avg_loss_vaf /= dist.get_world_size()
+    avg_loss_seg /= dist.get_world_size()
+
     if dist.get_rank() == 0:
         print("\n------------------------ Validation metrics ------------------------")
         f_log.write("\n------------------------ Validation metrics ------------------------\n")
@@ -201,7 +213,8 @@ def val(net, val_loader, criterions, f_log, epoch, gpu):
         f_log.write("--------------------------------------------------------------------\n\n")
 
     # now save the model if it has a better F1 score than the best model seen so forward
-    if avg_f1 > best_f1:
+
+    if dist.get_rank() == 0 and avg_f1 > best_f1:
         # save the model
         torch.save(net.state_dict(), os.path.join(args.output_dir, 'net_' + '%.4d' % (epoch,) + '.pth'))
         best_f1 = avg_f1
@@ -228,6 +241,9 @@ def worker(gpu, gpu_num, args):
 
     if args.cuda:
         model.cuda(args.gpu)
+    # TODO disable whiling loading snapshot
+    model.hm[2].bias.data.uniform_(-4.595, -4.595)  # bias towards negative class
+
     model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu], find_unused_parameters=True)
     dist_print(model)
 
@@ -236,7 +252,7 @@ def worker(gpu, gpu_num, args):
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
     # BCE(Focal) loss applied to each pixel individually
-    model.hm[2].bias.data.uniform_(-4.595, -4.595)  # bias towards negative class
+
     if args.loss_type == 'focal':
         criterion_1 = FocalLoss(gamma=2.0, alpha=0.25, size_average=True)
     elif args.loss_type == 'bce':
@@ -285,7 +301,7 @@ def worker(gpu, gpu_num, args):
 
     val_dataset = CULane(args.dataset_dir, 'val', False)
     val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset, shuffle=False)
-    kwargs = {'batch_size': 1, 'num_workers': 3, 'sampler': val_sampler}
+    kwargs = {'batch_size': args.batch_size // gpu_num, 'num_workers': args.workers, 'sampler': val_sampler}
     val_loader = DataLoader(val_dataset, **kwargs)
 
     # trainval loop
@@ -294,7 +310,10 @@ def worker(gpu, gpu_num, args):
         val_sampler.set_epoch(i - 1)  # TODO xxx
 
         # training epoch
-        model, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1 = train(model, i)
+        model, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1 = train(model, train_loader,
+                                                                                           [criterion_1, criterion_2,
+                                                                                            criterion_reg], optimizer,
+                                                                                           scheduler, f_log, i, gpu)
         train_loss_seg.append(avg_loss_seg)
         train_loss_vaf.append(avg_loss_vaf)
         train_loss_haf.append(avg_loss_haf)
@@ -303,7 +322,9 @@ def worker(gpu, gpu_num, args):
         train_f1.append(avg_f1)
 
         # validation epoch
-        avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1 = val(model, i)
+        avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1 = val(model, val_loader,
+                                                                                  [criterion_1, criterion_2,
+                                                                                   criterion_reg], f_log, i, gpu)
         val_loss_seg.append(avg_loss_seg)
         val_loss_vaf.append(avg_loss_vaf)
         val_loss_haf.append(avg_loss_haf)
