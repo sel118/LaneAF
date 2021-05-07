@@ -216,6 +216,8 @@ def val(net, val_loader, criterions, f_log, epoch, gpu):
 
     if dist.get_rank() == 0 and avg_f1 > best_f1:
         # save the model
+        if isinstance(net, torch.nn.parallel.DistributedDataParallel):
+            net = net.module
         torch.save(net.state_dict(), os.path.join(args.output_dir, 'net_' + '%.4d' % (epoch,) + '.pth'))
         best_f1 = avg_f1
 
