@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser('Options for training LaneAF models in PyTorch.
 parser.add_argument('--dataset-dir', type=str, default=None, help='path to dataset')
 parser.add_argument('--output-dir', type=str, default=None, help='output directory for model and logs')
 parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')
-parser.add_argument('--batch-size', type=int, default=2, metavar='N', help='batch size for training')
+parser.add_argument('--batch-size', type=int, default=8, metavar='N', help='batch size for training')
 parser.add_argument('--epochs', type=int, default=60, metavar='N', help='number of epochs to train for')
 parser.add_argument('--learning-rate', type=float, default=1e-4, metavar='LR', help='learning rate')
 parser.add_argument('--weight-decay', type=float, default=1e-3, metavar='WD', help='weight decay')
@@ -59,9 +59,9 @@ torch.manual_seed(args.seed)
 if args.cuda:
     torch.cuda.manual_seed(args.seed)
 
-kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 6}
+kwargs = {'batch_size': args.batch_size, 'shuffle': True, 'num_workers': 8}
 train_loader = DataLoader(CULane(args.dataset_dir, 'train', args.random_transforms), **kwargs)
-kwargs = {'batch_size': 1, 'shuffle': False, 'num_workers': 3}
+kwargs = {'batch_size': args.batch_size, 'shuffle': False, 'num_workers': 8}
 val_loader = DataLoader(CULane(args.dataset_dir, 'val', False), **kwargs)
 
 # global var to store best validation F1 score across all epochs
