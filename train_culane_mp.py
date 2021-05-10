@@ -56,7 +56,7 @@ def dist_print(*args, **kwargs):
 
 
 # training function
-def train(model, train_loader, criterions, optimizer, scheduler, f_log, epoch, gpu):
+def train(model, train_loader, criterions, optimizer, scheduler, f_log, epoch, gpu, args):
     epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_acc, epoch_f1 = list(), list(), list(), list(), list(), list()
     model.train()
     criterion_1, criterion_2, criterion_reg = criterions
@@ -137,7 +137,7 @@ def train(model, train_loader, criterions, optimizer, scheduler, f_log, epoch, g
 
 
 # validation function
-def val(net, val_loader, criterions, f_log, epoch, gpu):
+def val(net, val_loader, criterions, f_log, epoch, gpu, args):
     global best_f1
     epoch_loss_seg, epoch_loss_vaf, epoch_loss_haf, epoch_loss, epoch_acc, epoch_f1 = list(), list(), list(), list(), list(), list()
     net.eval()
@@ -315,7 +315,7 @@ def worker(gpu, gpu_num, args):
         model, avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1 = train(model, train_loader,
                                                                                            [criterion_1, criterion_2,
                                                                                             criterion_reg], optimizer,
-                                                                                           scheduler, f_log, i, gpu)
+                                                                                           scheduler, f_log, i, gpu, args)
         train_loss_seg.append(avg_loss_seg)
         train_loss_vaf.append(avg_loss_vaf)
         train_loss_haf.append(avg_loss_haf)
@@ -326,7 +326,7 @@ def worker(gpu, gpu_num, args):
         # validation epoch
         avg_loss_seg, avg_loss_vaf, avg_loss_haf, avg_loss, avg_acc, avg_f1 = val(model, val_loader,
                                                                                   [criterion_1, criterion_2,
-                                                                                   criterion_reg], f_log, i, gpu)
+                                                                                   criterion_reg], f_log, i, gpu, args)
         val_loss_seg.append(avg_loss_seg)
         val_loss_vaf.append(avg_loss_vaf)
         val_loss_haf.append(avg_loss_haf)
