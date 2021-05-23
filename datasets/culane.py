@@ -50,7 +50,7 @@ def get_lanes_culane(seg_out, samp_factor):
                 x_ip, y_ip = coord_op_to_ip(x_op, y_op, samp_factor)
                 xs.append(x_ip)
                 ys.append(y_ip)
-        if len(xs) >= 10:
+        if len(xs) >= 20:
             cs.append(CubicSpline(ys, xs, extrapolate=False))
         else:
             cs.append(None)
@@ -66,10 +66,8 @@ def get_lanes_culane(seg_out, samp_factor):
                     continue
                 else:
                     lane += [_x, _y]
-        if len(lane) <= 28:
-            print("Lane too small, discarding...")
-            continue
-        lanes.append(lane)
+            lanes.append(lane)
+
     return lanes
 
 class CULane(Dataset):
