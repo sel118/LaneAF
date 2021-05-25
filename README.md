@@ -30,8 +30,8 @@ cd DCNv2
 ## TuSimple
 The entire [TuSimple dataset](https://github.com/TuSimple/tusimple-benchmark/issues/3) should be downloaded and organized as follows:
 ```plain
-└── TuSimple
-    ├── clips
+└── TuSimple/
+    ├── clips/
     |   └── .
     |   └── .
     ├── label_data_0313.json
@@ -69,7 +69,7 @@ This will generate outputs in the TuSimple format and also produce benchmark met
 ## CULane
 The entire [CULane dataset](https://xingangpan.github.io/projects/CULane.html) should be downloaded and organized as follows:
 ```plain
-└── CULane
+└── CULane/
     ├── driver_*_*frame/
     ├── laneseg_label_w16/
     ├── laneseg_label_w16_test/
@@ -93,6 +93,38 @@ python infer_culane.py --dataset-dir=/path/to/CULane/ --snapshot=/path/to/traine
 source deactivate # exit virtual environment
 ```
 This will generate outputs in the CULane format. You can then use their [official code](https://github.com/XingangPan/SCNN) to evaluate the model on the CULane benchmark.
+
+## Unsupervised Llamas
+The [Unsupervised Llamas dataset](https://unsupervised-llamas.com/llamas/index) should be downloaded and organized as follows:
+```plain
+└── Llamas/
+    ├── color_images/
+    |   ├── train/
+    |   ├── valid/
+    |   └── test/
+    └── labels/
+        ├── train/
+        └── valid/
+```
+
+### Training
+LaneAF models can be trained on the Llamas dataset as follows:
+```shell
+source activate laneaf # activate virtual environment
+python train_llamas.py --dataset-dir=/path/to/Llamas/ --random-transforms
+source deactivate # exit virtual environment
+```
+Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments/llamas` folder by default.
+
+### Inference
+Trained LaneAF models can be run on the Llamas test set as follows:
+```shell
+source activate laneaf # activate virtual environment
+python infer_llamas.py --dataset-dir=/path/to/Llamas/ --snapshot=/path/to/trained/model/snapshot --save-viz
+source deactivate # exit virtual environment
+```
+This will generate outputs in the CULane format and Llamas format for the Lane Approximations benchmark. 
+Note that the results produced in the Llamas format could be inaccurate because we *guess* the IDs of the indivudal lanes. 
 
 ## Pre-trained Weights 
 You can download our pre-trained model weights using [this link](https://drive.google.com/file/d/1GJoVQfDyxhUT8Y5EqTRV9PX3WWckfxWG/view?usp=sharing).
