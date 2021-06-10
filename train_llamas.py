@@ -17,18 +17,21 @@ from torch.utils.data import DataLoader
 
 from datasets.llamas import Llamas
 from models.dla.pose_dla_dcn import get_pose_net
+from models.erfnet.erfnet import ERFNet
+from models.enet.ENet import ENet
 from models.loss import FocalLoss, IoULoss, RegL1Loss
 
 
 parser = argparse.ArgumentParser('Options for training LaneAF models in PyTorch...')
 parser.add_argument('--dataset-dir', type=str, default=None, help='path to dataset')
 parser.add_argument('--output-dir', type=str, default=None, help='output directory for model and logs')
+parser.add_argument('--backbone', type=str, default='dla34', help='type of model backbone (dla34/erfnet/enet)')
 parser.add_argument('--snapshot', type=str, default=None, help='path to pre-trained model snapshot')
 parser.add_argument('--batch-size', type=int, default=8, metavar='N', help='batch size for training')
 parser.add_argument('--epochs', type=int, default=40, metavar='N', help='number of epochs to train for')
 parser.add_argument('--learning-rate', type=float, default=1e-4, metavar='LR', help='learning rate')
 parser.add_argument('--weight-decay', type=float, default=1e-3, metavar='WD', help='weight decay')
-parser.add_argument('--loss-type', type=str, default='wbce', help='Type of classification loss to use (focal/bce/wbce)')
+parser.add_argument('--loss-type', type=str, default='wbce', help='type of classification loss to use (focal/bce/wbce)')
 parser.add_argument('--log-schedule', type=int, default=10, metavar='N', help='number of iterations to print/save log after')
 parser.add_argument('--seed', type=int, default=1, help='set seed to some constant value to reproduce experiments')
 parser.add_argument('--no-cuda', action='store_true', default=False, help='do not use cuda for training')
@@ -44,6 +47,10 @@ args.cuda = not args.no_cuda and torch.cuda.is_available()
 if args.output_dir is None:
     args.output_dir = datetime.now().strftime("%Y-%m-%d-%H:%M")
     args.output_dir = os.path.join('.', 'experiments', 'llamas', args.output_dir)
+
+args.backbone = args.backbone.lower()
+if args.backbone not in ['dla34', 'erfnet', 'enet']:
+    assert False, 'Incorrect model backbone provided!'
 
 if not os.path.exists(args.output_dir):
     os.makedirs(args.output_dir)
@@ -218,7 +225,12 @@ def val(net, epoch):
             
 if __name__ == "__main__":
     heads = {'hm': 1, 'vaf': 2, 'haf': 1}
-    model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
+    if args.backbone == 'dla34':
+        model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
+    elif args.backbone == 'erfnet':
+        model = ERFNet(heads=heads)
+    elif args.backbone == 'enet':
+        model = ENet(heads=heads)
 
     if args.snapshot is not None:
         model.load_state_dict(torch.load(args.snapshot), strict=True)
@@ -231,7 +243,7 @@ if __name__ == "__main__":
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.2)
 
     # BCE(Focal) loss applied to each pixel individually
-    model.hm[2].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
+    model.hm[-1].bias.data.uniform_(-4.595, -4.595) # bias towards negative class
     if args.loss_type == 'focal':
         criterion_1 = FocalLoss(gamma=2.0, alpha=0.25, size_average=True)
     elif args.loss_type == 'bce':
