@@ -93,12 +93,15 @@ class SADLoss(nn.Module):
     loss = 0.0
     upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
     for l in range(len(layer_ops)-1):
-        layer_cur = torch.sigmoid(torch.sum(layer_ops[l]**2, dim=1).view(layer_ops[l].size()[0], -1))
         if layer_ops[l].size()[2] == layer_ops[l+1].size()[2]:
-            layer_up = layer_ops[l+1].detach()
-        else:
-            layer_up = upsample(layer_ops[l+1].detach())
-        layer_next = torch.sigmoid(torch.sum(layer_up**2, dim=1).view(layer_ops[l+1].size()[0], -1))
+            layer_cur = torch.softmax(torch.sum(layer_ops[l]**2, dim=1).view(layer_ops[l].size()[0], -1), dim=1)
+            layer_next = torch.softmax(torch.sum(layer_ops[l+1].detach()**2, dim=1).view(layer_ops[l+1].size()[0], -1), dim=1)
+        elif layer_ops[l].size()[2] > layer_ops[l+1].size()[2]:
+            layer_cur = torch.softmax(torch.sum(layer_ops[l]**2, dim=1).view(layer_ops[l].size()[0], -1), dim=1)
+            layer_next = torch.softmax(torch.sum(upsample(layer_ops[l+1].detach()**2), dim=1).view(layer_ops[l+1].size()[0], -1), dim=1)
+        elif layer_ops[l].size()[2] < layer_ops[l+1].size()[2]:
+            layer_cur = torch.softmax(torch.sum(upsample(layer_ops[l]**2), dim=1).view(layer_ops[l].size()[0], -1), dim=1)
+            layer_next = torch.softmax(torch.sum(layer_ops[l+1].detach()**2, dim=1).view(layer_ops[l+1].size()[0], -1), dim=1)
+
         loss += F.mse_loss(layer_cur, layer_next, reduction='mean')
-    print(loss.item())
     return loss
