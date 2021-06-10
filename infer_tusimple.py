@@ -13,6 +13,8 @@ from torch.utils.data import DataLoader
 
 from datasets.tusimple import TuSimple, get_lanes_tusimple
 from models.dla.pose_dla_dcn import get_pose_net
+from models.erfnet.erfnet import ERFNet
+from models.enet.ENet import ENet
 from utils.affinity_fields import decodeAFs
 from utils.metrics import match_multi_class, LaneEval
 from utils.visualize import tensor2image, create_viz
@@ -49,6 +51,16 @@ if not os.path.exists(args.output_dir):
     os.makedirs(args.output_dir)
 else:
     assert False, 'Output directory already exists!'
+
+# load args used from training snapshot (if available)
+if os.path.exists(os.path.join(os.path.dirname(args.snapshot), 'config.json')):
+    with open(os.path.join(os.path.dirname(args.snapshot), 'config.json')) as f:
+        json_args = json.load(f)
+    # augment infer args with training args for model consistency
+    if 'backbone' in json_args.keys():
+        args.backbone = json_args['backbone']
+    else:
+        args.backbone = 'dla34'
 
 # store config in output directory
 with open(os.path.join(args.output_dir, 'config.json'), 'w') as f:
@@ -130,7 +142,12 @@ def test(net):
 
 if __name__ == "__main__":
     heads = {'hm': 1, 'vaf': 2, 'haf': 1}
-    model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
+    if args.backbone == 'dla34':
+        model = get_pose_net(num_layers=34, heads=heads, head_conv=256, down_ratio=4)
+    elif args.backbone == 'erfnet':
+        model = ERFNet(heads=heads)
+    elif args.backbone == 'enet':
+        model = ENet(heads=heads)
 
     model.load_state_dict(torch.load(args.snapshot), strict=True)
     if args.cuda:
