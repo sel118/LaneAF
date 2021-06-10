@@ -58,6 +58,7 @@ python train_tusimple.py --dataset-dir=/path/to/TuSimple/ --backbone=dla34 --ran
 source deactivate # exit virtual environment
 ```
 Other supported backbones are `erfnet` and `enet`.
+
 Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments/tusimple` folder by default.
 
 ### Inference
@@ -94,6 +95,7 @@ python train_culane.py --dataset-dir=/path/to/CULane/ --backbone=dla34 --random-
 source deactivate # exit virtual environment
 ```
 Other supported backbones are `erfnet` and `enet`.
+
 Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments/culane` folder by default.
 
 ### Inference
@@ -133,6 +135,7 @@ python train_llamas.py --dataset-dir=/path/to/Llamas/ --backbone=dla34 --random-
 source deactivate # exit virtual environment
 ```
 Other supported backbones are `erfnet` and `enet`.
+
 Config files, logs, results and snapshots from running the above scripts will be stored in the `LaneAF/experiments/llamas` folder by default.
 
 ### Inference
