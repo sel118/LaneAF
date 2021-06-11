@@ -6,6 +6,10 @@
 
 This repository contains Pytorch code for training and testing LaneAF lane detection models introduced in [this paper](http://cvrr.ucsd.edu/publications/2021/LaneAF.pdf).
 
+[Video results](https://youtube.com/playlist?list=PLUebh5NWCQUZv8IXYOVNM5SuRYQzScW5P)
+
+![result_grid](assets/result_grid.png)
+
 ## Installation
 1) Clone this repository
 2) Install Anaconda
