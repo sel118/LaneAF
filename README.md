@@ -87,8 +87,8 @@ This will generate outputs in the TuSimple format and also produce benchmark met
 | Backbone | F1-score | Accuracy |   FP   |   FN   |
 |:--------:|:--------:|:--------:|:------:|:------:|
 |  DLA-34  |  96.2765 |  95.6734 | 0.0330 | 0.0412 |
-|  ERFNet  |  94.4974 |  95.3505 | 0.0662 | 0.0450 |
-|   ENet   |  92.0552 |  94.7938 | 0.1090 | 0.0542 |
+|  ERFNet  |  94.9465 |  95.2978 | 0.0550 | 0.0465 |
+|   ENet   |  92.8905 |  94.7271 | 0.0885 | 0.0560 |
 
 ## CULane
 The entire [CULane dataset](https://xingangpan.github.io/projects/CULane.html) should be downloaded and organized as follows:
