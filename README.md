@@ -86,7 +86,7 @@ This will generate outputs in the TuSimple format and also produce benchmark met
 ### Results
 | Backbone | F1-score | Accuracy |   FP   |   FN   |
 |:--------:|:--------:|:--------:|:------:|:------:|
-|  DLA-34  |  96.2765 |  95.6734 | 0.0330 | 0.0412 |
+|  DLA-34  |  96.4891 |  95.6172 | 0.0280 | 0.0418 |
 |  ERFNet  |  94.9465 |  95.2978 | 0.0550 | 0.0465 |
 |   ENet   |  92.8905 |  94.7271 | 0.0885 | 0.0560 |
 
