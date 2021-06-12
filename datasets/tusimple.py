@@ -58,7 +58,7 @@ def get_lanes_tusimple(seg_out, h_samples, samp_factor):
                 x_ip, y_ip = coord_op_to_ip(x_op, y_op, samp_factor)
                 xs.append(x_ip)
                 ys.append(y_ip)
-        if len(xs) >= 5:
+        if len(xs) >= 10:
             cs.append(CubicSpline(ys, xs, extrapolate=False))
         else:
             cs.append(None)
