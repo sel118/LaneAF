@@ -8,7 +8,16 @@
 
 [Video results](https://youtube.com/playlist?list=PLUebh5NWCQUZv8IXYOVNM5SuRYQzScW5P)
 
-![result_grid](assets/result_grid.png)
+![VAF](assets/result_zoomed_VAF.png)
+![HAF](assets/result_zoomed_HAF.png)
+
+## Overview
+1) [Installation](#installation)
+2) [TuSimple](#tusimple)
+3) [CULane](#culane)
+4) [Unsupervised Llamas](#unsupervised-llamas)
+5) [Pre-trained Weights](#pre-trained-weights)
+5) [Citation](#citation)
 
 ## Installation
 1) Clone this repository
