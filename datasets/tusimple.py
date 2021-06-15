@@ -35,6 +35,17 @@ def coord_ip_to_op(x, y, scale):
     return x, y
 
 def get_lanes_tusimple(seg_out, h_samples, samp_factor):
+    pred_ids = np.unique(seg_out[seg_out > 0]) # find unique pred ids
+    # sort lanes based on their size
+    lane_num_pixels = [np.sum(seg_out == ids) for ids in pred_ids]
+    ret_lane_ids = pred_ids[np.argsort(lane_num_pixels)[::-1]]
+    # retain a maximum of 4 lanes
+    if ret_lane_ids.size > 4:
+        print("Detected more than 4 lanes")
+        for rem_id in ret_lane_ids[4:]:
+            seg_out[seg_out == rem_id] = 0
+        ret_lane_ids = ret_lane_ids[:4]
+
     # fit cubic spline to each lane
     cs = []
     lane_ids = np.unique(seg_out[seg_out > 0])
