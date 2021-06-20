@@ -104,7 +104,7 @@ def train(net, epoch):
         target = input_mask.detach().cpu().numpy().ravel()
         pred[target == train_loader.dataset.ignore_label] = 0
         target[target == train_loader.dataset.ignore_label] = 0
-        train_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
+        train_acc = accuracy_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
         train_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64), zero_division=1)
 
         epoch_loss_seg.append(loss_seg.item())
@@ -178,7 +178,7 @@ def val(net, epoch):
         target = input_mask.detach().cpu().numpy().ravel()
         pred[target == val_loader.dataset.ignore_label] = 0
         target[target == val_loader.dataset.ignore_label] = 0
-        val_acc = accuracy_score((pred > 0.5).astype(np.int64), (target > 0.5).astype(np.int64))
+        val_acc = accuracy_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64))
         val_f1 = f1_score((target > 0.5).astype(np.int64), (pred > 0.5).astype(np.int64), zero_division=1)
 
         epoch_loss_seg.append(loss_seg.item())
