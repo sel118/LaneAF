@@ -107,8 +107,13 @@ def test(net):
         # decode AFs to get lane instances
         seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out, fg_thresh=128, err_thresh=5)
 
-        # re-assign lane IDs to match with ground truth
-        seg_out = match_multi_class(seg_out.astype(np.int64), input_seg[0, 0, :, :].detach().cpu().numpy().astype(np.int64))
+        if torch.any(torch.isnan(input_seg)):
+            # if labels are not available, skip this step
+            pass
+        else:
+            # if test set labels are available
+            # re-assign lane IDs to match with ground truth
+            seg_out = match_multi_class(seg_out.astype(np.int64), input_seg[0, 0, :, :].detach().cpu().numpy().astype(np.int64))
 
         # get results in output structure
         xy_coords = get_lanes_culane(seg_out, test_loader.dataset.samp_factor)

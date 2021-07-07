@@ -226,11 +226,11 @@ class Llamas(Dataset):
             seg = torch.from_numpy(seg[:, :, 0]).contiguous().long().unsqueeze(0)
             mask = torch.from_numpy(mask).contiguous().float().unsqueeze(0)
             af = torch.from_numpy(af).permute(2, 0, 1).contiguous().float()
-        else:
+        else: # if testing, set ground truth tensors to nan values
             img, _ = self.transforms((img, img))
             # convert all outputs to torch tensors
             img = torch.from_numpy(img).permute(2, 0, 1).contiguous().float()
-            seg, mask, af = -1, -1, -1
+            seg, mask, af = torch.tensor(float('nan')), torch.tensor(float('nan')), torch.tensor(float('nan'))
 
         return img, seg, mask, af
 

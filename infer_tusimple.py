@@ -105,8 +105,13 @@ def test(net):
         seg_out = decodeAFs(mask_out[:, :, 0], vaf_out, haf_out, fg_thresh=128, err_thresh=5)
         ed_time = datetime.now()
 
-        # re-assign lane IDs to match with ground truth
-        seg_out = match_multi_class(seg_out.astype(np.int64), input_seg[0, 0, :, :].detach().cpu().numpy().astype(np.int64))
+        if torch.any(torch.isnan(input_seg)):
+            # if labels are not available, skip this step
+            pass
+        else:
+            # if test set labels are available
+            # re-assign lane IDs to match with ground truth
+            seg_out = match_multi_class(seg_out.astype(np.int64), input_seg[0, 0, :, :].detach().cpu().numpy().astype(np.int64))
 
         # fill results in output structure
         json_pred[b_idx]['run_time'] = (ed_time - st_time).total_seconds()*1000.
